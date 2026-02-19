@@ -1,0 +1,15 @@
+# Java
+backend-todo/target/
+*.class
+
+# Node
+frontend-todo/node_modules/
+frontend-todo/build/
+frontend-todo/dist/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Env
+.env
