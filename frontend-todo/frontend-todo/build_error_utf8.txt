@@ -1,0 +1,118 @@
+﻿
+> frontend-todo@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 164 modules transformed.
+node.exe : 
+[31mΓ£ù[39m Build 
+failed in 1.55s
+At C:\Program Files\n
+odejs\npm.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: ([31mΓ£   
+ ù[39m Build fai    
+led in 1.55s:Str    
+ing) [], RemoteE    
+xception
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+[31merror during 
+build:
+[31m[vite:esbuild] 
+Transform failed 
+with 1 error:
+D:/AllProjects/ToDoPr
+oject/frontend-todo/f
+rontend-todo/src/shar
+ed/layout/Sidebar.jsx
+:16:9: ERROR: The 
+symbol "Sparkles" 
+has already been 
+declared[31m
+file: [36mD:/AllProj
+ects/ToDoProject/fron
+tend-todo/frontend-to
+do/src/shared/layout/
+Sidebar.jsx:16:9[31m
+[33m
+[33mThe symbol 
+"Sparkles" has 
+already been 
+declared[33m
+14 |    Star
+15 |  } from 
+"lucide-react";
+16 |  import { 
+Sparkles, Clock, 
+Target, Bell, 
+Calendar, BarChart3, 
+Zap } from 
+"lucide-react";
+   |           ^
+17 |  import { 
+useState, useEffect 
+} from "react";
+18 |  import { 
+useAuth } from "@/app
+/providers/AuthContex
+t";
+[31m
+    at 
+failureErrorWithLog (
+D:\AllProjects\ToDoPr
+oject\frontend-todo\f
+rontend-todo\node_mod
+ules\esbuild\lib\main
+.js:1467:15)
+    at D:\AllProjects
+\ToDoProject\frontend
+-todo\frontend-todo\n
+ode_modules\esbuild\l
+ib\main.js:736:50
+    at responseCallba
+cks.<computed> (D:\Al
+lProjects\ToDoProject
+\frontend-todo\fronte
+nd-todo\node_modules\
+esbuild\lib\main.js:6
+03:9)
+    at 
+handleIncomingPacket 
+(D:\AllProjects\ToDoP
+roject\frontend-todo\
+frontend-todo\node_mo
+dules\esbuild\lib\mai
+n.js:658:12)
+    at Socket.readFro
+mStdout (D:\AllProjec
+ts\ToDoProject\fronte
+nd-todo\frontend-todo
+\node_modules\esbuild
+\lib\main.js:581:7)
+    at Socket.emit 
+(node:events:524:28)
+    at addChunk (node
+:internal/streams/rea
+dable:561:12)
+    at readableAddChu
+nkPushByteMode (node:
+internal/streams/read
+able:512:3)
+    at Readable.push 
+(node:internal/stream
+s/readable:392:5)
+    at 
+Pipe.onStreamRead (no
+de:internal/stream_ba
+se_commons:189:23)[3
+9m

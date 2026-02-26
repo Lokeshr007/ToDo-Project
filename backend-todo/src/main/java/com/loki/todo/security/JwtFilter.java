@@ -1,5 +1,6 @@
 package com.loki.todo.security;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -27,34 +27,50 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        try {
 
+            String header = request.getHeader("Authorization");
 
+            if (header != null && header.startsWith("Bearer ")) {
 
-        String header = request.getHeader("Authorization");
+                String token = header.substring(7);
 
-        if(header != null && header.startsWith("Bearer ")){
-
-            String token = header.substring(7);
-
-            try{
                 String username = jwtUtil.extractUsername(token);
+                Long workspaceId = jwtUtil.extractWorkspaceId(token);
 
-                if(username != null){
-                    UsernamePasswordAuthenticationToken auth =
+                WorkspaceContext.setWorkspaceId(workspaceId);
+
+                if (username != null) {
+
+                    // FIXED: Use CustomUserDetails instead of CurrentUser
+                    CustomUserDetails userDetails = new CustomUserDetails(username);
+
+                    UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
-                                    username,
+                                    userDetails,  // Changed from CurrentUser to CustomUserDetails
                                     null,
-                                    Collections.emptyList()
+                                    null
                             );
 
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authentication);
                 }
-            }catch(Exception e){
-                // ignore invalid token
             }
+
+        } catch (ExpiredJwtException ex) {
+            // token expired -> do NOT crash
+            SecurityContextHolder.clearContext();
+
+        } catch (Exception ex) {
+            // invalid token
+            SecurityContextHolder.clearContext();
         }
 
-        filterChain.doFilter(request,response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // Clear workspace context
+            WorkspaceContext.clear();
+        }
     }
 }

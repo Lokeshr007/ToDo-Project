@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-15px); }
@@ -17,4 +21,156 @@
 
 .animate-gradient {
   animation: gradientMove 10s infinite linear;
+}
+
+.clip-hexagon {
+  clip-path: polygon(
+    25% 6%, 75% 6%,
+    100% 50%,
+    75% 94%, 25% 94%,
+    0% 50%
+  );
+}
+
+
+@layer base {
+  :root {
+    --color-bg: #ffffff;
+    --color-card: #ffffff;
+    --color-border: #e5e7eb;
+    --color-text: #111827;
+    --color-text-secondary: #6b7280;
+    --color-accent: #3b82f6;
+    --color-hover: #f3f4f6;
+  }
+
+  .dark {
+    --color-bg: #0a0a0f;
+    --color-card: #1a1a2e;
+    --color-border: #2a2a3a;
+    --color-text: #f3f4f6;
+    --color-text-secondary: #9ca3af;
+    --color-accent: #7c3aed;
+    --color-hover: #252538;
+  }
+}
+
+/* Add to your global CSS */
+@keyframes progress {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+.animate-progress {
+  animation: progress 1.5s ease-in-out forwards;
+}
+
+@layer components {
+  .glass-effect {
+    @apply backdrop-blur-xl;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-2xl hover:-translate-y-1;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1a2e;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a3a;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a4a;
+  }
+
+  /* Animations */
+  @keyframes slideIn {
+    from {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* frontend/src/index.css or add to your existing CSS */
+
+/* Sidebar transitions */
+.sidebar-transition {
+  transition: width 0.3s ease-in-out, margin 0.3s ease-in-out;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Active nav link glow effect */
+.nav-link-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link-glow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.2), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.nav-link-glow:hover::after {
+  opacity: 1;
 }

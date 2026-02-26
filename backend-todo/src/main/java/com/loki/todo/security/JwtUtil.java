@@ -45,13 +45,22 @@ public class JwtUtil {
                 .compact();
     }
 
-    public  String generateAccessToken(String username){
+    public String generateAccessToken(String email, Long workspaceId){
+
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
+                .claim("workspaceId", workspaceId)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis()+ ACCESS_EXPIRATION))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000*60*60))
                 .signWith(getKey())
                 .compact();
+    }
+
+    public Long extractWorkspaceId(String token){
+
+        Claims claims = extractClaims(token);
+
+        return claims.get("workspaceId", Long.class);
     }
 
     public String extractUsername(String token){

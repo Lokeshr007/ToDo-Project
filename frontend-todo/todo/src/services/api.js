@@ -1,102 +1,136 @@
-import axios from 'axios'
+import axios from "axios";
 
-const API = axios.create({
-   baseURL: "http://localhost:8080/api"
+const API_BASE_URL = "http://localhost:8080/api";
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
 });
 
+
+// =======================
+// TOKEN REFRESH CONTROL
+// =======================
 
 let isRefreshing = false;
 let refreshSubscribers = [];
 
-function subscribeTokenRefresh(cb) {
-   refreshSubscribers.push(cb);
-}
+const onRefreshed = (token) => {
+  refreshSubscribers.map((cb) => cb(token));
+};
 
-function onRefreshed(token) {
-   refreshSubscribers.forEach(cb => cb(token));
-   refreshSubscribers = [];
-}
+const addRefreshSubscriber = (callback) => {
+  refreshSubscribers.push(callback);
+};
 
-function logout() {
-   localStorage.clear();
 
-   // ✅ NO HARD RELOAD
-   if(window.location.pathname !== "/login"){
-      window.history.pushState({}, "", "/login");
-      window.dispatchEvent(new PopStateEvent("popstate"));
-   }
-}
+// =======================
+// REQUEST INTERCEPTOR
+// =======================
 
-// ===== REQUEST =====
+api.interceptors.request.use((config) => {
 
-API.interceptors.request.use(config => {
-   const token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
 
-   if(token){
-      config.headers.Authorization = `Bearer ${token}`;
-   }
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
 
-   return config;
-})
+  // workspace id injected from localStorage (temporary)
+  // later we upgrade to WorkspaceContext sync
 
-// ===== RESPONSE =====
+  const workspaceId = localStorage.getItem("currentWorkspaceId");
 
-API.interceptors.response.use(
-  res => res,
-  async error => {
+  if (
+    workspaceId &&
+    !config.url.includes("/auth") &&
+    !config.url.includes("/workspaces")
+  ) {
+    config.headers["X-Workspace-ID"] = workspaceId;
+  }
+
+  return config;
+});
+
+
+// =======================
+// RESPONSE INTERCEPTOR
+// =======================
+
+api.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
 
     const originalRequest = error.config;
 
-    // Already retried once → stop
-    if (originalRequest._retry) {
-      return Promise.reject(error);
-    }
-
-    // Skip refresh for auth endpoints
-    if (originalRequest.url.includes("/auth")) {
-      return Promise.reject(error);
-    }
-
     if (error.response?.status === 401) {
 
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      // 🔥 No refresh token → logout
-      if (!refreshToken) {
-        logout();
+      if (originalRequest._retry) {
+        localStorage.clear();
+        window.location.href = "/login";
         return Promise.reject(error);
       }
 
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
 
-        // IMPORTANT → use axios (not API)
         const res = await axios.post(
-          "http://localhost:8080/api/auth/refresh",
-          { refreshToken }
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
         );
 
-        const newAccessToken = res.data.accessToken;
+        const newToken = res.data.accessToken;
 
-        localStorage.setItem("accessToken", newAccessToken);
+        localStorage.setItem("accessToken", newToken);
 
-        originalRequest.headers.Authorization =
-          `Bearer ${newAccessToken}`;
+        isRefreshing = false;
 
-        return API(originalRequest);
+        onRefreshed(newToken);
+        refreshSubscribers = [];
+
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+        return api(originalRequest);
 
       } catch (err) {
 
-        // Refresh failed → logout
-        logout();
+        isRefreshing = false;
+        localStorage.clear();
+        window.location.href = "/login";
         return Promise.reject(err);
+
       }
+    }
+
+    if (error.response?.status === 403) {
+      window.dispatchEvent(
+        new CustomEvent("showNotification", {
+          detail: {
+            message: "Access denied",
+            type: "error",
+          },
+        })
+      );
     }
 
     return Promise.reject(error);
   }
 );
 
-
-export default API;
+export default api;

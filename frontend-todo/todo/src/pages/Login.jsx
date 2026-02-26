@@ -12,6 +12,7 @@ function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -25,8 +26,15 @@ function Login() {
       
       // Traditional Login
       const res = await API.post("/auth/login", formData);
-      login(res.data)
-      navigate("/");
+      login(res.data);
+
+        // 🔥 GET USER WORKSPACES
+        const wsRes = await API.get("/workspaces");
+
+        // store default workspace
+        localStorage.setItem("workspaceId", wsRes.data[0].id);
+
+        navigate("/app/dashboard");
     } catch (err) {
       setError("Invalid credentials. Please try again.");
     } finally {
