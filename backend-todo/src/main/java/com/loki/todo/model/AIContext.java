@@ -20,10 +20,10 @@ public class AIContext {
 
     private String sessionId;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String contextData;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String userPreferences;
 
     @Column(length = 5000)

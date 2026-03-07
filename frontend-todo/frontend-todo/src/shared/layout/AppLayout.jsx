@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "@/shared/layout/Sidebar";
 import TopBar from "@/shared/layout/TopBar";
+import UniversalSearch from "@/shared/components/UniversalSearch";
 
 function AppLayout() {
   return (
@@ -9,6 +10,7 @@ function AppLayout() {
         <Sidebar />
         <div className="flex-1">
           <TopBar />
+          <UniversalSearch />
           <main className="p-8">
             <Outlet />
           </main>

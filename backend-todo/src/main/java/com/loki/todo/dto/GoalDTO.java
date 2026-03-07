@@ -24,6 +24,7 @@ public class GoalDTO {
     private String reminderTime;
     private Long userId;
     private Long workspaceId;
+    private Long projectId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

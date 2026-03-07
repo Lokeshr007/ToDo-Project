@@ -101,6 +101,17 @@ public class KanbanController {
         ));
     }
 
+    @PutMapping("/tasks/{taskId}/assignees")
+    public ResponseEntity<TodoCardDTO> updateTaskAssignees(
+            @PathVariable Long taskId,
+            @RequestBody List<Long> userIds,
+            Authentication auth) {
+
+        return ResponseEntity.ok(kanbanService.updateTaskAssignees(
+                taskId, userIds, auth.getName()
+        ));
+    }
+
     @GetMapping("/boards/{boardId}/activity")
     public ResponseEntity<List<BoardActivityDTO>> getBoardActivity(
             @PathVariable Long boardId,

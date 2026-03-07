@@ -4,6 +4,7 @@ import com.loki.todo.model.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.util.List;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -23,14 +24,18 @@ public class TodoResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime startedAt;
     private Integer estimatedHours;
-    private Integer actualHours;
+    private Double actualHours;
     private Integer storyPoints;
     private boolean overdue;
+    private Double aiScore;
+    private Integer progress;
 
     // Related entities
     private UserSummary assignedTo;
+    private List<UserSummary> assignees;
     private UserSummary createdBy;
     private ProjectSummary project;
+    private GoalSummary goal;
     private BoardSummary board;
     private ColumnSummary boardColumn;
 
@@ -54,9 +59,17 @@ public class TodoResponse {
         response.setActualHours(todo.getActualHours());
         response.setStoryPoints(todo.getStoryPoints());
         response.setOverdue(todo.isOverdue());
+        response.setAiScore(todo.getAiScore());
+        response.setProgress(todo.getProgress());
 
         if (todo.getAssignedTo() != null) {
             response.setAssignedTo(UserSummary.fromEntity(todo.getAssignedTo()));
+        }
+
+        if (todo.getAssignees() != null) {
+            response.setAssignees(todo.getAssignees().stream()
+                    .map(UserSummary::fromEntity)
+                    .collect(java.util.stream.Collectors.toList()));
         }
 
         if (todo.getCreatedBy() != null) {
@@ -65,6 +78,10 @@ public class TodoResponse {
 
         if (todo.getProject() != null) {
             response.setProject(ProjectSummary.fromEntity(todo.getProject()));
+        }
+
+        if (todo.getGoal() != null) {
+            response.setGoal(GoalSummary.fromEntity(todo.getGoal()));
         }
 
         if (todo.getBoard() != null) {
@@ -108,6 +125,22 @@ public class TodoResponse {
             summary.setId(project.getId());
             summary.setName(project.getName());
             summary.setColor(project.getColor());
+            return summary;
+        }
+    }
+
+    @Data
+    public static class GoalSummary {
+        private Long id;
+        private String title;
+        private String color;
+
+        public static GoalSummary fromEntity(Goal goal) {
+            if (goal == null) return null;
+            GoalSummary summary = new GoalSummary();
+            summary.setId(goal.getId());
+            summary.setTitle(goal.getTitle());
+            summary.setColor(goal.getColor());
             return summary;
         }
     }

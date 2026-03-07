@@ -1,4 +1,13 @@
 package com.loki.todo.repository;
 
-public interface LearningPathRepository {
+import com.loki.todo.model.LearningPath;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface LearningPathRepository extends JpaRepository<LearningPath, Long> {
+    List<LearningPath> findByCategory(String category);
+    List<LearningPath> findByDifficulty(String difficulty);
 }

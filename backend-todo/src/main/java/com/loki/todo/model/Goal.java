@@ -21,10 +21,10 @@ public class Goal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String title;
 
-    @Column(length = 1000)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false)
@@ -70,6 +70,10 @@ public class Goal {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id")
     private Workspace workspace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

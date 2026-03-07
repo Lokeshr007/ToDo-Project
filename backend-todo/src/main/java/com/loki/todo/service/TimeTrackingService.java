@@ -1,4 +1,3 @@
-// com/loki/todo/service/TimeTrackingService.java
 package com.loki.todo.service;
 
 import com.loki.todo.model.TimeTracking;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -26,11 +26,29 @@ public class TimeTrackingService {
 
     @Transactional(readOnly = true)
     public TimeTracking getActiveTimer(String email) {
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getUserByEmail(email);
+        return timeRepo.findByUserAndEndTimeIsNull(user).orElse(null);
+    }
 
+    @Transactional
+    public TimeTracking startTimeTracking(Long todoId, String email) {
+        User user = getUserByEmail(email);
+        Todos todo = todoRepo.findById(todoId)
+                .orElseThrow(() -> new RuntimeException("Todo not found"));
+
+        // Check if already tracking - auto-stop existing timer
         Optional<TimeTracking> activeTimer = timeRepo.findByUserAndEndTimeIsNull(user);
-        return activeTimer.orElse(null);
+        if (activeTimer.isPresent()) {
+            stopTimeTracking(activeTimer.get().getId(), email);
+        }
+
+        TimeTracking tracking = new TimeTracking();
+        tracking.setTodo(todo);
+        tracking.setUser(user);
+        tracking.setStartTime(LocalDateTime.now());
+
+        log.info("Timer started for task: {} by user: {}", todoId, email);
+        return timeRepo.save(tracking);
     }
 
     @Transactional
@@ -42,22 +60,45 @@ public class TimeTrackingService {
             throw new RuntimeException("You can only stop your own timers");
         }
 
-        tracking.setEndTime(LocalDateTime.now());
-        tracking.setDuration(java.time.Duration.between(tracking.getStartTime(), tracking.getEndTime()).toMinutes());
+        if (tracking.getEndTime() != null) {
+            return tracking; // Already stopped
+        }
 
+        tracking.stop(); // Uses domain method to set end time and calculate hours
         TimeTracking saved = timeRepo.save(tracking);
 
         // Update todo's actual hours
         Todos todo = tracking.getTodo();
-        if (todo != null) {
-            Double totalHours = timeRepo.totalHoursForTodo(todo);
-            if (totalHours != null) {
-                todo.setActualHours(totalHours.intValue());
-                todoRepo.save(todo);
-            }
+        if (todo != null && saved.getHoursLogged() != null) {
+            todo.addTimeSpent(saved.getHoursLogged());
+            todoRepo.save(todo);
         }
 
-        log.info("Timer stopped: {} by user: {}", trackingId, email);
+        log.info("Timer stopped: {} for task: {} by user: {}", trackingId, todo != null ? todo.getId() : "null", email);
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TimeTracking> getTimeTracking(Long todoId) {
+        Todos todo = todoRepo.findById(todoId)
+                .orElseThrow(() -> new RuntimeException("Todo not found"));
+        return timeRepo.findByTodo(todo);
+    }
+
+    @Transactional(readOnly = true)
+    public Double getTotalTimeForTodo(Long todoId) {
+        Todos todo = todoRepo.findById(todoId)
+                .orElseThrow(() -> new RuntimeException("Todo not found"));
+        return timeRepo.totalHoursForTodo(todo);
+    }
+
+    @Transactional
+    public void deleteByTodo(Todos todo) {
+        timeRepo.deleteByTodo(todo);
+    }
+
+    private User getUserByEmail(String email) {
+        return userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

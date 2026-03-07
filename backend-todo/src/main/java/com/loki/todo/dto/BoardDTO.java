@@ -19,10 +19,12 @@ public class BoardDTO {
     private String projectName;
     private double orderIndex;
     private long taskCount;
+    private long completedTaskCount;
+    private double completionPercentage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static BoardDTO fromEntity(Board board, long taskCount) {
+    public static BoardDTO fromEntity(Board board, long taskCount, long completedTaskCount) {
         BoardDTO dto = new BoardDTO();
         dto.setId(board.getId());
         dto.setName(board.getName());
@@ -32,6 +34,8 @@ public class BoardDTO {
         dto.setCreatedAt(board.getCreatedAt());
         dto.setUpdatedAt(board.getUpdatedAt());
         dto.setTaskCount(taskCount);
+        dto.setCompletedTaskCount(completedTaskCount);
+        dto.setCompletionPercentage(taskCount > 0 ? (completedTaskCount * 100.0 / taskCount) : 0.0);
 
         if (board.getProject() != null) {
             dto.setProjectId(board.getProject().getId());

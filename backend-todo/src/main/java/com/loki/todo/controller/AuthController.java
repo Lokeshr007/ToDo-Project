@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -104,7 +105,7 @@ public class AuthController {
             response.addHeader("Set-Cookie", cookie.toString());
 
             // Get user's workspaces
-            var memberships = membershipRepository.findByUser(user);
+            List<Membership> memberships = membershipRepository.findByUser(user);
 
             Map<String, Object> userMap = new HashMap<>();
             userMap.put("id", user.getId());
@@ -176,7 +177,7 @@ public class AuthController {
 
         Long workspaceId = membership.getWorkspace().getId();
 
-        String newAccessToken = jwtUtil.generateAccessToken(user.getEmail(), workspaceId);
+        String newAccessToken = jwtUtil.generateAccessToken(user.getEmail(), workspaceId, refreshToken.getDeviceSession().getId());
 
         ResponseCookie cookie = createRefreshCookie(newRefreshToken);
         response.addHeader("Set-Cookie", cookie.toString());
@@ -226,7 +227,7 @@ public class AuthController {
         String email = authentication.getName();
         User user = authService.getUserByEmail(email);
 
-        var memberships = membershipRepository.findByUser(user);
+        List<Membership> memberships = membershipRepository.findByUser(user);
 
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("id", user.getId());
@@ -265,6 +266,52 @@ public class AuthController {
         response.put("success", true);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login-otp/send")
+    public ResponseEntity<?> sendLoginOtp(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            authService.sendLoginOtp(email);
+            return ResponseEntity.ok(Map.of("message", "OTP sent successfully", "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage(), "success", false));
+        }
+    }
+
+    @PostMapping("/forgot-password-send")
+    public ResponseEntity<?> sendForgotPasswordOtp(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            authService.sendForgotPasswordOtp(email);
+            return ResponseEntity.ok(Map.of("message", "Reset OTP sent successfully", "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage(), "success", false));
+        }
+    }
+
+    @PostMapping("/forgot-password-verify")
+    public ResponseEntity<?> verifyForgotPasswordOtp(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            String otp = body.get("otp");
+            authService.verifyForgotPasswordOtp(email, otp);
+            return ResponseEntity.ok(Map.of("message", "OTP verified successfully", "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage(), "success", false));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            String newPassword = body.get("newPassword");
+            authService.resetPassword(email, newPassword);
+            return ResponseEntity.ok(Map.of("message", "Password reset successfully", "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage(), "success", false));
+        }
     }
 
     @PostMapping("/logout")

@@ -31,10 +31,10 @@ public class Todos {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String item;
 
-    @Column(length = 2000)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -64,13 +64,16 @@ public class Todos {
     private Integer estimatedHours;
 
     @Column(name = "actual_hours")
-    private Integer actualHours;
+    private Double actualHours;
 
     @Column(name = "story_points")
     private Integer storyPoints;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(name = "is_ai_generated")
+    private Boolean isAiGenerated = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
@@ -84,6 +87,14 @@ public class Todos {
     @JoinColumn(name = "assigned_to_id")
     private User assignedTo;
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "todo_assignees",
+            joinColumns = @JoinColumn(name = "todo_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private List<User> assignees = new ArrayList<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Project project;
@@ -95,6 +106,16 @@ public class Todos {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_column_id")
     private BoardColumn boardColumn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
+
+    @Column(name = "ai_score")
+    private Double aiScore;
+
+    @Column(name = "progress")
+    private Integer progress = 0;
 
     @Column(name = "order_index")
     private double orderIndex = 0;
@@ -260,7 +281,26 @@ public class Todos {
     public void assignTo(User user) {
         User previousAssignee = this.assignedTo;
         this.assignedTo = user;
+        if (user != null && !this.assignees.contains(user)) {
+            this.assignees.add(user);
+        }
         domainEvents.add(new WorkflowEvent(WorkflowEventType.TODO_ASSIGNED, this, previousAssignee, user));
+    }
+
+    public void addAssignee(User user) {
+        if (user != null && !this.assignees.contains(user)) {
+            this.assignees.add(user);
+            domainEvents.add(new WorkflowEvent(WorkflowEventType.TODO_ASSIGNED, this, null, user));
+        }
+    }
+
+    public void removeAssignee(User user) {
+        if (this.assignees.remove(user)) {
+            if (this.assignedTo != null && this.assignedTo.equals(user)) {
+                this.assignedTo = this.assignees.isEmpty() ? null : this.assignees.get(0);
+            }
+            domainEvents.add(new WorkflowEvent(WorkflowEventType.TODO_UNASSIGNED, this, user, null));
+        }
     }
 
     public void changePriority(Priority newPriority) {
@@ -303,9 +343,9 @@ public class Todos {
         this.labels.remove(label);
     }
 
-    public void addTimeSpent(Integer hours) {
+    public void addTimeSpent(Double hours) {
         if (this.actualHours == null) {
-            this.actualHours = 0;
+            this.actualHours = 0.0;
         }
         this.actualHours += hours;
         domainEvents.add(new WorkflowEvent(WorkflowEventType.TODO_TIME_LOGGED, this, hours));

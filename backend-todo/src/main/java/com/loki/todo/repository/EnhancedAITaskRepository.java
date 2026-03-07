@@ -24,5 +24,8 @@ public interface EnhancedAITaskRepository extends JpaRepository<EnhancedAITask, 
     @Query("SELECT t FROM EnhancedAITask t WHERE t.plan = :plan AND t.weekNumber = :weekNumber")
     List<EnhancedAITask> findByPlanAndWeek(@Param("plan") EnhancedAIPlan plan, @Param("weekNumber") Integer weekNumber);
 
+    @Query("SELECT t FROM EnhancedAITask t JOIN FETCH t.plan WHERE t.id IN :ids")
+    List<EnhancedAITask> findAllByIdInWithPlan(@Param("ids") List<Long> ids);
+
     Long countByPlanAndAcceptedTrue(EnhancedAIPlan plan);
 }

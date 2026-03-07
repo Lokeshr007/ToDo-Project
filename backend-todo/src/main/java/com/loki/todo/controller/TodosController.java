@@ -2,10 +2,13 @@ package com.loki.todo.controller;
 
 import com.loki.todo.dto.TodoRequest;
 import com.loki.todo.dto.TodoResponse;
+import com.loki.todo.dto.TimeTrackingResponse;
+import com.loki.todo.dto.CommentResponse;
 import com.loki.todo.model.Comment;
 import com.loki.todo.model.TimeTracking;
 import com.loki.todo.model.Todos;
 import com.loki.todo.service.TodosService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,11 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/todos")
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
@@ -39,7 +41,7 @@ public class TodosController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate,
             @RequestParam(required = false) List<String> labels,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "100") int size,
             Authentication authentication) {
 
         try {
@@ -266,6 +268,38 @@ public class TodosController {
         }
     }
 
+    // Assignees
+    @PostMapping("/{id}/assignees")
+    public ResponseEntity<?> addAssignee(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body,
+            Authentication authentication) {
+        try {
+            String userEmail = authentication != null ? authentication.getName() : null;
+            Long userId = body.get("userId");
+            if (userId == null) return ResponseEntity.badRequest().body(Map.of("error", "userId is required"));
+
+            Todos task = todosService.addAssigneeToTask(id, userId, userEmail);
+            return ResponseEntity.ok(TodoResponse.fromEntity(task));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}/assignees/{userId}")
+    public ResponseEntity<?> removeAssignee(
+            @PathVariable Long id,
+            @PathVariable Long userId,
+            Authentication authentication) {
+        try {
+            String userEmail = authentication != null ? authentication.getName() : null;
+            Todos task = todosService.removeAssigneeFromTask(id, userId, userEmail);
+            return ResponseEntity.ok(TodoResponse.fromEntity(task));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // Comments
     @PostMapping("/{id}/comments")
     public ResponseEntity<?> addComment(
@@ -284,7 +318,7 @@ public class TodosController {
             }
 
             Comment comment = todosService.addComment(id, content, userEmail);
-            return ResponseEntity.ok(comment);
+            return ResponseEntity.ok(CommentResponse.fromEntity(comment));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -303,7 +337,10 @@ public class TodosController {
             }
 
             List<Comment> comments = todosService.getComments(id, userEmail);
-            return ResponseEntity.ok(comments);
+            List<CommentResponse> response = comments.stream()
+                .map(CommentResponse::fromEntity)
+                .collect(Collectors.toList());
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -313,7 +350,7 @@ public class TodosController {
         }
     }
 
-    // Time tracking - Only keep start timer here, stop timer moved to TimeTrackingController
+    // Time tracking (active timer & stop are handled by TimeTrackingController at /api/todos/time)
     @PostMapping("/{id}/time/start")
     public ResponseEntity<?> startTimeTracking(@PathVariable Long id, Authentication authentication) {
         try {
@@ -323,7 +360,7 @@ public class TodosController {
             }
 
             TimeTracking tracking = todosService.startTimeTracking(id, userEmail);
-            return ResponseEntity.ok(tracking);
+            return ResponseEntity.ok(TimeTrackingResponse.fromEntity(tracking));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -332,8 +369,6 @@ public class TodosController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
-
-    // REMOVED: stopTimeTracking method - now handled by TimeTrackingController
 
     @GetMapping("/{id}/time")
     public ResponseEntity<?> getTimeTracking(@PathVariable Long id, Authentication authentication) {
@@ -344,7 +379,8 @@ public class TodosController {
             }
 
             List<TimeTracking> tracking = todosService.getTimeTracking(id, userEmail);
-            return ResponseEntity.ok(tracking);
+            List<TimeTrackingResponse> response = tracking.stream().map(TimeTrackingResponse::fromEntity).collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -370,6 +406,91 @@ public class TodosController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Bulk operations
+    @PostMapping("/bulk/delete")
+    public ResponseEntity<?> bulkDelete(@RequestBody Map<String, Object> body, Authentication authentication) {
+        try {
+            String userEmail = authentication != null ? authentication.getName() : null;
+            Object idsObj = body.get("ids");
+            if (!(idsObj instanceof List)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ids must be a list"));
+            }
+            
+            List<Long> ids = ((List<?>) idsObj).stream()
+                    .filter(Objects::nonNull)
+                    .map(id -> {
+                        try {
+                            if (id instanceof Number) return ((Number) id).longValue();
+                            String s = String.valueOf(id);
+                            return s.contains(".") ? Double.valueOf(s).longValue() : Long.valueOf(s);
+                        } catch (Exception e) {
+                            log.warn("Invalid ID in bulk delete: {}", id);
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+                    
+            if (ids.isEmpty()) {
+                return ResponseEntity.ok(Map.of("message", "No valid IDs provided", "count", 0));
+            }
+
+            boolean permanent = Boolean.TRUE.equals(body.get("permanent"));
+            
+            todosService.bulkDelete(ids, permanent, userEmail);
+            return ResponseEntity.ok(Map.of("message", "Bulk delete successful", "count", ids.size()));
+        } catch (Exception e) {
+            log.error("Bulk delete failed", e);
+            String errorMsg = e.toString() + (e.getCause() != null ? " | Cause: " + e.getCause().toString() : "");
+            return ResponseEntity.badRequest().body(Map.of("error", errorMsg));
+        }
+    }
+
+    @PostMapping("/bulk/status")
+    public ResponseEntity<?> bulkStatusUpdate(@RequestBody Map<String, Object> body, Authentication authentication) {
+        try {
+            String userEmail = authentication != null ? authentication.getName() : null;
+            Object idsObj = body.get("ids");
+            if (!(idsObj instanceof List)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ids must be a list"));
+            }
+            
+            List<Long> ids = ((List<?>) idsObj).stream()
+                    .map(id -> Long.valueOf(id.toString()))
+                    .collect(Collectors.toList());
+                    
+            String statusStr = (String) body.get("status");
+            Todos.Status status = Todos.Status.valueOf(statusStr.toUpperCase());
+            
+            todosService.bulkUpdateStatus(ids, status, userEmail);
+            return ResponseEntity.ok(Map.of("message", "Bulk status update successful"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/bulk/assign")
+    public ResponseEntity<?> bulkAssign(@RequestBody Map<String, Object> body, Authentication authentication) {
+        try {
+            String userEmail = authentication != null ? authentication.getName() : null;
+            Object idsObj = body.get("ids");
+            if (!(idsObj instanceof List)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "ids must be a list"));
+            }
+            
+            List<Long> ids = ((List<?>) idsObj).stream()
+                    .map(id -> Long.valueOf(id.toString()))
+                    .collect(Collectors.toList());
+                    
+            Long userId = Long.valueOf(body.get("userId").toString());
+            
+            todosService.bulkAssign(ids, userId, userEmail);
+            return ResponseEntity.ok(Map.of("message", "Bulk assignment successful"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

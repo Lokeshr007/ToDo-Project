@@ -41,7 +41,9 @@ public class NotificationService {
     public static final String TYPE_TASK_OVERDUE = "TASK_OVERDUE";
     public static final String TYPE_TASK_MENTION = "TASK_MENTION";
     public static final String TYPE_PROJECT_CREATED = "PROJECT_CREATED";
+    public static final String TYPE_PROJECT_MEMBER_ADDED = "PROJECT_MEMBER_ADDED";
     public static final String TYPE_WORKSPACE_INVITE = "WORKSPACE_INVITE";
+    public static final String TYPE_WORKSPACE_MEMBER_ADDED = "WORKSPACE_MEMBER_ADDED";
     public static final String TYPE_COMMENT_ADDED = "COMMENT_ADDED";
     public static final String TYPE_REMINDER = "REMINDER";
 
@@ -94,12 +96,20 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationDTO> getUserNotifications(String email, int limit) {
+    public List<NotificationDTO> getUserNotifications(String email, int limit, String filter) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-        List<Notification> notifications = notificationRepository.findByUserOrderByCreatedAtDesc(user, pageable);
+        List<Notification> notifications;
+
+        if ("unread".equalsIgnoreCase(filter)) {
+            notifications = notificationRepository.findByUserAndReadOrderByCreatedAtDesc(user, false, pageable);
+        } else if ("read".equalsIgnoreCase(filter)) {
+            notifications = notificationRepository.findByUserAndReadOrderByCreatedAtDesc(user, true, pageable);
+        } else {
+            notifications = notificationRepository.findByUserOrderByCreatedAtDesc(user, pageable);
+        }
 
         return notifications.stream()
                 .map(NotificationDTO::fromEntity)
@@ -187,11 +197,19 @@ public class NotificationService {
      */
     @Transactional
     public void sendTaskAssignedNotification(Todos todo) {
-        if (todo.getAssignedTo() == null) {
+        sendTaskAssignedNotification(todo, null);
+    }
+
+    @Transactional
+    public void sendTaskAssignedNotification(Todos todo, User assignee) {
+        if (assignee == null) {
+            assignee = todo.getAssignedTo();
+        }
+        
+        if (assignee == null) {
             return;
         }
 
-        User assignee = todo.getAssignedTo();
         User assignedBy = todo.getCreatedBy();
 
         // Check if user wants notifications
@@ -221,6 +239,7 @@ public class NotificationService {
         );
 
         // Send email notification
+        /*
         String subject = "Task Assigned: " + todo.getItem();
         String content = String.format(
                 "You have been assigned a new task: %s\n\n" +
@@ -235,6 +254,7 @@ public class NotificationService {
         );
 
         emailService.sendEmail(assignee.getEmail(), subject, content);
+        */
         log.info("Assignment notification sent to: {}", assignee.getEmail());
     }
 
@@ -301,7 +321,7 @@ public class NotificationService {
         );
 
         // Optionally send email as fallback
-        emailService.sendReminderEmail(reminder);
+        // emailService.sendReminderEmail(reminder);
     }
 
     /**
@@ -365,6 +385,7 @@ public class NotificationService {
                 metadata
         );
 
+        /*
         String subject = "Task Due Soon: " + todo.getItem();
         String content = String.format(
                 "Task is due on %s: %s\n\n" +
@@ -377,11 +398,9 @@ public class NotificationService {
         );
 
         emailService.sendEmail(assignee.getEmail(), subject, content);
+        */
         log.info("Due date reminder sent to: {}", assignee.getEmail());
     }
-
-    // Add these methods to NotificationService.java if they don't exist
-
 
     @Transactional
     public void sendTaskCompletedNotification(Todos todo) {
@@ -402,7 +421,7 @@ public class NotificationService {
                 TYPE_TASK_COMPLETED,
                 "Task Completed",
                 completedBy.getName() + " completed task: " + todo.getItem(),
-                "/todos?id=" + todo.getId(),
+                "/app/todos?id=" + todo.getId(),
                 "CheckCircle",
                 "green",
                 todo.getWorkspace() != null ? todo.getWorkspace().getId() : null,
@@ -410,5 +429,65 @@ public class NotificationService {
                 todo.getProject() != null ? todo.getProject().getId() : null,
                 metadata
         );
+    }
+
+    @Transactional
+    public void sendWorkspaceMemberAddedNotification(Workspace workspace, User newUser, User invitedBy) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("workspaceId", workspace.getId());
+        metadata.put("workspaceName", workspace.getName());
+        metadata.put("invitedBy", invitedBy.getName());
+
+        createNotification(
+                newUser.getId(),
+                TYPE_WORKSPACE_MEMBER_ADDED,
+                "Added to Workspace",
+                invitedBy.getName() + " added you to workspace: " + workspace.getName(),
+                "/app/dashboard",
+                "Users",
+                "indigo",
+                workspace.getId(),
+                null,
+                null,
+                metadata
+        );
+
+        /* 
+        emailService.sendEmail(
+                newUser.getEmail(),
+                "Added to Workspace: " + workspace.getName(),
+                String.format("You have been added to the workspace '%s' by %s.", workspace.getName(), invitedBy.getName())
+        );
+        */
+    }
+
+    @Transactional
+    public void sendProjectMemberAddedNotification(Project project, User newUser, User addedBy) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("projectId", project.getId());
+        metadata.put("projectName", project.getName());
+        metadata.put("addedBy", addedBy.getName());
+
+        createNotification(
+                newUser.getId(),
+                TYPE_PROJECT_MEMBER_ADDED,
+                "Added to Project",
+                addedBy.getName() + " added you to project: " + project.getName(),
+                "/app/projects/" + project.getId(),
+                "FolderKanban",
+                "purple",
+                project.getWorkspace() != null ? project.getWorkspace().getId() : null,
+                null,
+                project.getId(),
+                metadata
+        );
+
+        /*
+        emailService.sendEmail(
+                newUser.getEmail(),
+                "Added to Project: " + project.getName(),
+                String.format("You have been added to the project '%s' by %s.", project.getName(), addedBy.getName())
+        );
+        */
     }
 }

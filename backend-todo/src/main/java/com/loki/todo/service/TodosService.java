@@ -3,6 +3,7 @@ package com.loki.todo.service;
 import com.loki.todo.dto.TodoRequest;
 import com.loki.todo.model.*;
 import com.loki.todo.repository.*;
+import com.loki.todo.repository.TodosSpecification;
 import com.loki.todo.security.WorkspaceAccess;
 import com.loki.todo.security.WorkspaceContext;
 import com.loki.todo.workflow.WorkflowEventPublisher;
@@ -14,15 +15,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,13 +35,15 @@ public class TodosService {
     private final BoardRepository boardRepo;
     private final BoardColumnRepository columnRepo;
     private final MembershipRepository membershipRepo;
-    private final CommentRepository commentRepo;
+    private final CommentService commentService;
+    private final TimeTrackingService timeTrackingService;
     private final AttachmentRepository attachmentRepo;
-    private final TimeTrackingRepository timeRepo;
     private final BoardActivityRepository activityRepo;
+    private final GoalRepository goalRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final WorkflowEventPublisher workflowEventPublisher;
     private final NotificationService notificationService;
+    private final RealtimeNotificationService realtimeService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -55,13 +56,15 @@ public class TodosService {
             BoardRepository boardRepo,
             BoardColumnRepository columnRepo,
             MembershipRepository membershipRepo,
-            CommentRepository commentRepo,
+            CommentService commentService,
+            TimeTrackingService timeTrackingService,
             AttachmentRepository attachmentRepo,
-            TimeTrackingRepository timeRepo,
             BoardActivityRepository activityRepo,
+            GoalRepository goalRepo,
             ApplicationEventPublisher eventPublisher,
             WorkflowEventPublisher workflowEventPublisher,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            RealtimeNotificationService realtimeService) {
 
         this.todoRepo = todoRepo;
         this.userRepo = userRepo;
@@ -70,13 +73,15 @@ public class TodosService {
         this.boardRepo = boardRepo;
         this.columnRepo = columnRepo;
         this.membershipRepo = membershipRepo;
-        this.commentRepo = commentRepo;
+        this.commentService = commentService;
+        this.timeTrackingService = timeTrackingService;
         this.attachmentRepo = attachmentRepo;
-        this.timeRepo = timeRepo;
         this.activityRepo = activityRepo;
+        this.goalRepo = goalRepo;
         this.eventPublisher = eventPublisher;
         this.workflowEventPublisher = workflowEventPublisher;
         this.notificationService = notificationService;
+        this.realtimeService = realtimeService;
     }
 
     private User getUserByEmail(String email) {
@@ -117,76 +122,42 @@ public class TodosService {
                                         String priority, String status, Long assigneeId,
                                         LocalDate dueDate, List<String> labels,
                                         int page, int size) {
+        
         Workspace workspace = getCurrentWorkspace();
         validateWorkspaceAccess(workspace, email);
         User user = getUserByEmail(email);
 
-        List<Todos> results = new ArrayList<>();
+        Specification<Todos> spec = Specification.where(TodosSpecification.hasWorkspace(workspace));
 
-        // Apply filters based on parameters
-        if (projectId != null) {
-            Project project = projectRepo.findById(projectId)
-                    .orElseThrow(() -> new RuntimeException("Project not found"));
-            results = todoRepo.findByWorkspaceAndProject(workspace, project);
+        if (projectId != null) spec = spec.and(TodosSpecification.hasProjectId(projectId));
+        if (assigneeId != null) spec = spec.and(TodosSpecification.hasAssigneeId(assigneeId));
+        if (dueDate != null) spec = spec.and(TodosSpecification.hasDueDate(dueDate));
+        
+        if (status != null && !status.equals("all")) {
+            try {
+                spec = spec.and(TodosSpecification.hasStatus(Todos.Status.valueOf(status)));
+            } catch (Exception ignored) {}
         }
-        else if (priority != null) {
-            Todos.Priority priorityEnum = Todos.Priority.valueOf(priority.toUpperCase());
-            results = todoRepo.findByWorkspaceAndPriority(workspace, priorityEnum);
-        }
-        else if (status != null) {
-            Todos.Status statusEnum = Todos.Status.valueOf(status.toUpperCase());
-            results = todoRepo.findByWorkspaceAndStatus(workspace, statusEnum);
-        }
-        else if (assigneeId != null) {
-            User assignee = userRepo.findById(assigneeId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-            results = todoRepo.findByWorkspaceAndAssignedTo(workspace, assignee);
-        }
-        else if (dueDate != null) {
-            results = todoRepo.findByWorkspaceAndDueDate(workspace, dueDate);
-        }
-        else if ("today".equals(filter)) {
-            results = todoRepo.findByWorkspaceAndDueDate(workspace, LocalDate.now());
-        }
-        else if ("overdue".equals(filter)) {
-            results = todoRepo.findOverdueInWorkspace(workspace, LocalDate.now());
-        }
-        else if ("completed".equals(filter)) {
-            results = todoRepo.findByWorkspaceAndStatus(workspace, Todos.Status.COMPLETED);
-        }
-        else if ("pending".equals(filter)) {
-            results = todoRepo.findByWorkspaceAndStatusNot(workspace, Todos.Status.COMPLETED);
-        }
-        else if ("assigned".equals(filter)) {
-            results = todoRepo.findByWorkspaceAndAssignedTo(workspace, user);
-        }
-        else if ("created".equals(filter)) {
-            results = todoRepo.findByWorkspaceAndCreatedBy(workspace, user);
-        }
-        else {
-            results = todoRepo.findByWorkspace(workspace);
+        
+        if (priority != null && !priority.equals("all")) {
+            try {
+                spec = spec.and(TodosSpecification.hasPriority(Todos.Priority.valueOf(priority)));
+            } catch (Exception ignored) {}
         }
 
-        // Apply label filter if provided
-        if (labels != null && !labels.isEmpty()) {
-            results = results.stream()
-                    .filter(todo -> todo.getLabels() != null &&
-                            todo.getLabels().stream().anyMatch(labels::contains))
-                    .collect(Collectors.toList());
+        // Apply preset filters
+        if ("overdue".equals(filter)) {
+            spec = spec.and(TodosSpecification.isOverdue());
+        } else if ("completed".equals(filter)) {
+            spec = spec.and(TodosSpecification.hasStatus(Todos.Status.COMPLETED));
+        } else if ("pending".equals(filter)) {
+            spec = spec.and((root, query, cb) -> cb.notEqual(root.get("status"), Todos.Status.COMPLETED));
         }
 
-        // Apply pagination manually if needed
-        if (page >= 0 && size > 0) {
-            int start = page * size;
-            int end = Math.min(start + size, results.size());
-            if (start < results.size()) {
-                results = results.subList(start, end);
-            } else {
-                results = new ArrayList<>();
-            }
-        }
+        Sort sort = Sort.by(Sort.Order.asc("dueDate"), Sort.Order.asc("id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
 
-        return results;
+        return todoRepo.findAll(spec, pageable).getContent();
     }
 
     @WorkspaceAccess
@@ -260,19 +231,9 @@ public class TodosService {
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("Task title is required");
         }
-
-        // Validate due date (cannot be in the past for new tasks)
-        LocalDateTime dueDateTime = request.getProcessedDueDateTime();
-        if (dueDateTime != null && dueDateTime.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Due date cannot be in the past");
-        }
-
-        LocalDate dueDate = request.getDueDate();
-        if (dueDate != null && dueDateTime == null) {
-            // If only date provided, check if date is in past
-            if (dueDate.isBefore(LocalDate.now())) {
-                throw new IllegalArgumentException("Due date cannot be in the past");
-            }
+        
+        if (title.length() > 1000) {
+            title = title.substring(0, 995) + "...";
         }
 
         // Find project if provided
@@ -286,11 +247,28 @@ public class TodosService {
             }
         }
 
-        // Find board if provided
+        // Find goal if provided
+        Goal goal = null;
+        if (request.getGoalId() != null) {
+            goal = goalRepo.findById(request.getGoalId())
+                    .orElseThrow(() -> new RuntimeException("Goal not found"));
+        }
+
+        // Find board if provided or default to the first board in the project
         Board board = null;
         if (request.getBoardId() != null) {
             board = boardRepo.findById(request.getBoardId())
                     .orElseThrow(() -> new RuntimeException("Board not found"));
+            
+            // Link project automatically from board if it was omitted
+            if (project == null && board.getProject() != null) {
+                project = board.getProject();
+            }
+        } else if (project != null) {
+            List<Board> projectBoards = boardRepo.findByProjectOrderByOrderIndex(project);
+            if (projectBoards != null && !projectBoards.isEmpty()) {
+                board = projectBoards.get(0);
+            }
         }
 
         // Find assigned user if provided
@@ -305,6 +283,9 @@ public class TodosService {
             }
         }
 
+        LocalDateTime dueDateTime = request.getProcessedDueDateTime();
+        LocalDate dueDate = request.getDueDate();
+
         // Create todo using domain constructor
         Todos todo = new Todos(
                 title,
@@ -318,6 +299,24 @@ public class TodosService {
                 assignedTo,
                 request.getStoryPoints()
         );
+
+        // Process multiple assignees
+        if (request.getAssigneeIds() != null && !request.getAssigneeIds().isEmpty()) {
+            for (Long assigneeId : request.getAssigneeIds()) {
+                userRepo.findById(assigneeId).ifPresent(user -> {
+                    if (membershipRepo.existsByUserAndWorkspace(user, workspace)) {
+                        todo.addAssignee(user);
+                    }
+                });
+            }
+        } else if (assignedTo != null) {
+            // If only single assignedTo exists, add it to assignees as well
+            todo.addAssignee(assignedTo);
+        }
+
+        if (goal != null) {
+            todo.setGoal(goal);
+        }
 
         // Set status if provided
         if (request.getStatus() != null) {
@@ -346,11 +345,19 @@ public class TodosService {
                 }
             } else {
                 // If board has default column, add to it
-                BoardColumn defaultColumn = columnRepo.findByBoardAndType(board, BoardColumn.ColumnType.TODO)
+                BoardColumn defaultColumn = columnRepo.findByBoardAndTypeAndDeletedAtIsNull(board, BoardColumn.ColumnType.TODO)
                         .orElse(null);
                 if (defaultColumn != null) {
                     todo.setBoardColumn(defaultColumn);
                     todo.setOrderIndex(defaultColumn.getTodos().size());
+                } else {
+                    // Fallback to the first available column to prevent ghost tasks
+                    List<BoardColumn> allColumns = columnRepo.findByBoardAndDeletedAtIsNullOrderByOrderIndex(board);
+                    if (allColumns != null && !allColumns.isEmpty()) {
+                        BoardColumn firstColumn = allColumns.get(0);
+                        todo.setBoardColumn(firstColumn);
+                        todo.setOrderIndex(firstColumn.getTodos().size());
+                    }
                 }
             }
         }
@@ -370,16 +377,18 @@ public class TodosService {
             activityRepo.save(activity);
         }
 
-        // Send notifications
-        if (assignedTo != null && !assignedTo.getId().equals(creator.getId())) {
-            notificationService.sendTaskAssignedNotification(saved);
-        }
-
         // Publish domain events
         saved.getDomainEvents().forEach(eventPublisher::publishEvent);
         saved.clearDomainEvents();
 
         log.info("Task created: {} by user: {}", saved.getId(), email);
+
+        // Real-time update
+        realtimeService.sendWorkspaceUpdate(workspace.getId(), "TASK_CREATED", Map.of(
+                "taskId", saved.getId(),
+                "item", saved.getItem(),
+                "status", saved.getStatus()
+        ));
 
         return saved;
     }
@@ -401,7 +410,6 @@ public class TodosService {
         // Track changes for activity
         StringBuilder changes = new StringBuilder();
         boolean assignmentChanged = false;
-        User oldAssignee = todo.getAssignedTo();
 
         // Update using domain methods
         if (request.getItem() != null && !request.getItem().equals(todo.getItem())) {
@@ -444,6 +452,22 @@ public class TodosService {
                     .orElseThrow(() -> new RuntimeException("Project not found"));
             if (todo.getProject() == null || !todo.getProject().equals(project)) {
                 todo.moveToProject(project);
+                
+                // Auto-assign to default board and column if moving to a new project natively
+                if (todo.getBoard() == null || !todo.getBoard().getProject().getId().equals(project.getId())) {
+                    List<Board> projectBoards = boardRepo.findByProjectOrderByOrderIndex(project);
+                    if (projectBoards != null && !projectBoards.isEmpty()) {
+                        Board defaultBoard = projectBoards.get(0);
+                        todo.moveToBoard(defaultBoard);
+                        
+                        BoardColumn defaultCol = columnRepo.findByBoardAndTypeAndDeletedAtIsNull(defaultBoard, BoardColumn.ColumnType.TODO).orElse(null);
+                        if (defaultCol != null) {
+                            todo.setBoardColumn(defaultCol);
+                            todo.setOrderIndex(defaultCol.getTodos().size());
+                        }
+                    }
+                }
+                
                 changes.append("Project changed, ");
             }
         }
@@ -455,7 +479,19 @@ public class TodosService {
                 todo.assignTo(assignedTo);
                 changes.append("Assignee changed, ");
                 assignmentChanged = true;
+                
+                // NOTIFY
+                notificationService.sendTaskAssignedNotification(todo, assignedTo);
             }
+        }
+
+        // Handle multiple assignees
+        if (request.getAssigneeIds() != null) {
+            todo.getAssignees().clear();
+            for (Long assigneeId : request.getAssigneeIds()) {
+                userRepo.findById(assigneeId).ifPresent(todo::addAssignee);
+            }
+            changes.append("Multi-assignees updated, ");
         }
 
         if (request.getStoryPoints() != null) {
@@ -473,12 +509,6 @@ public class TodosService {
         }
 
         Todos saved = todoRepo.save(todo);
-
-        // Send notification if assignment changed
-        if (assignmentChanged && saved.getAssignedTo() != null &&
-                !saved.getAssignedTo().getId().equals(user.getId())) {
-            notificationService.sendTaskAssignedNotification(saved);
-        }
 
         // Record activity if there were changes
         if (changes.length() > 0 && todo.getBoard() != null) {
@@ -517,34 +547,27 @@ public class TodosService {
 
         Todos.Status oldStatus = todo.getStatus();
 
-        // Apply status change using domain methods
+        // Apply status change using direct setters to allow free transitions
         switch (newStatus) {
             case COMPLETED:
-                todo.complete();
+                todo.setStatus(Todos.Status.COMPLETED);
+                todo.setCompletedAt(LocalDateTime.now());
                 // Send completion notification
                 notificationService.sendTaskCompletedNotification(todo);
                 break;
             case IN_PROGRESS:
-                todo.start();
-                break;
-            case REVIEW:
-                todo.moveToReview();
-                break;
-            case BLOCKED:
-                todo.block("Status changed by user");
-                break;
-            case ARCHIVED:
-                todo.archive();
+                todo.setStatus(Todos.Status.IN_PROGRESS);
+                if (todo.getStartedAt() == null) {
+                    todo.setStartedAt(LocalDateTime.now());
+                }
                 break;
             case PENDING:
-                // If it was completed, un-complete
-                if (todo.getStatus() == Todos.Status.COMPLETED) {
-                    todo.setCompletedAt(null);
-                }
                 todo.setStatus(Todos.Status.PENDING);
+                todo.setCompletedAt(null);
                 break;
             default:
                 todo.setStatus(newStatus);
+                break;
         }
 
         Todos saved = todoRepo.save(todo);
@@ -583,6 +606,11 @@ public class TodosService {
     @WorkspaceAccess
     @Transactional
     public void deleteTask(Long id, boolean permanent, String email) {
+        deleteTaskInternal(id, permanent, email, false);
+    }
+
+    @Transactional
+    public void deleteTaskInternal(Long id, boolean permanent, String email, boolean forceAllow) {
         Workspace workspace = getCurrentWorkspace();
         validateWorkspaceAccess(workspace, email);
         User user = getUserByEmail(email);
@@ -592,38 +620,72 @@ public class TodosService {
                 .orElseThrow(() -> new RuntimeException("Todo not found"));
 
         if (!todo.getWorkspace().getId().equals(workspace.getId())) {
-            throw new RuntimeException("Access denied");
+        throw new RuntimeException("Access denied: Task does not belong to current workspace");
+    }
+
+    if (permanent) {
+        // SECURITY UPDATE: Only Admin, Owner, or Task Creator can permanently delete
+        User authUser = getUserByEmail(email);
+        Membership membership = membershipRepo.findByUserAndWorkspace(authUser, workspace)
+                .orElseThrow(() -> new RuntimeException("Membership not found"));
+        
+        boolean isCreator = todo.getCreatedBy() != null && todo.getCreatedBy().getId().equals(authUser.getId());
+        if (!forceAllow && !isCreator && !"OWNER".equals(membership.getRole()) && !"ADMIN".equals(membership.getRole())) {
+            throw new RuntimeException("Unauthorized: Only Admins, Owners, or the task creator can permanently delete tasks.");
         }
 
-        if (permanent) {
-            // Permanent delete - remove all related data
-            commentRepo.deleteByTodo(todo);
-            attachmentRepo.deleteByTodo(todo);
-            timeRepo.deleteByTodo(todo);
-            todoRepo.delete(todo);
-            log.info("Task permanently deleted: {} by user: {}", id, email);
-        } else {
-            // Soft delete
-            todo.softDelete();
-            todoRepo.save(todo);
-            todoRepo.flush();          // Force SQL execution
-            entityManager.clear();      // Evict all entities from persistence context
-            log.info("Task soft deleted: {} by user: {}", id, email);
-        }
-
-        // Record activity
+        // Permanent delete - remove all related data
+        commentService.deleteByTodo(todo);
+        attachmentRepo.deleteByTodo(todo);
+        timeTrackingService.deleteByTodo(todo);
+        activityRepo.deleteByTodo(todo);
+        
+        // Remove foreign key references from other tables without deleting those records
+        entityManager.createNativeQuery("UPDATE ai_generated_tasks SET created_todo_id = NULL WHERE created_todo_id = :id")
+                .setParameter("id", id).executeUpdate();
+        entityManager.createNativeQuery("UPDATE enhanced_ai_tasks SET created_todo_id = NULL WHERE created_todo_id = :id")
+                .setParameter("id", id).executeUpdate();
+                
+        entityManager.createNativeQuery("UPDATE time_blocks SET todo_id = NULL WHERE todo_id = :id")
+                .setParameter("id", id).executeUpdate();
+        entityManager.createNativeQuery("UPDATE reminders SET todo_id = NULL WHERE todo_id = :id")
+                .setParameter("id", id).executeUpdate();
+        
+        // Delete notifications related to this task
+        entityManager.createNativeQuery("DELETE FROM notifications WHERE todo_id = :id")
+                .setParameter("id", id).executeUpdate();
+        
+        entityManager.createNativeQuery("DELETE FROM goal_linked_tasks WHERE task_id = :id")
+                .setParameter("id", id).executeUpdate();
+        
+        todoRepo.delete(todo);
+        log.info("Task permanently deleted: {} by user: {}", id, email);
+    } else {
+        // Soft delete
+        todo.softDelete();
+        todoRepo.save(todo);
+        
+        // Record activity only if soft deleting
         if (todo.getBoard() != null) {
             BoardActivity activity = new BoardActivity();
-            activity.setType(permanent ? BoardActivity.ActivityType.TASK_DELETED :
-                    BoardActivity.ActivityType.TASK_ARCHIVED);
+            activity.setType(BoardActivity.ActivityType.TASK_ARCHIVED);
             activity.setBoard(todo.getBoard());
             activity.setTodo(todo);
             activity.setPerformedBy(user);
-            activity.setDescription(String.format("Task '%s' %s",
-                    todo.getItem(), permanent ? "permanently deleted" : "archived"));
+            activity.setDescription(String.format("Task '%s' archived", todo.getItem()));
             activityRepo.save(activity);
         }
+
+        todoRepo.flush();          // Force SQL execution
+        log.info("Task soft deleted: {} by user: {}", id, email);
     }
+
+    // REAL-TIME SYNC: Notify project and workspace members
+    if (todo.getProject() != null) {
+        realtimeService.sendProjectUpdate(todo.getProject().getId(), "TASK_DELETED", 
+            Map.of("taskId", id, "permanent", permanent));
+    }
+}
 
     @WorkspaceAccess
     @Transactional
@@ -687,7 +749,6 @@ public class TodosService {
     public Comment addComment(Long todoId, String content, String email) {
         Workspace workspace = getCurrentWorkspace();
         validateWorkspaceAccess(workspace, email);
-        User user = getUserByEmail(email);
 
         Todos todo = todoRepo.findById(todoId)
                 .orElseThrow(() -> new RuntimeException("Todo not found"));
@@ -696,22 +757,7 @@ public class TodosService {
             throw new RuntimeException("Access denied");
         }
 
-        Comment comment = new Comment();
-        comment.setContent(content);
-        comment.setTodo(todo);
-        comment.setAuthor(user);
-
-        Comment saved = commentRepo.save(comment);
-
-        // Record activity
-        if (todo.getBoard() != null) {
-            BoardActivity activity = BoardActivity.commentAdded(todo, saved, user);
-            activityRepo.save(activity);
-        }
-
-        log.info("Comment added to task: {} by user: {}", todoId, email);
-
-        return saved;
+        return commentService.addComment(todoId, content, email);
     }
 
     @WorkspaceAccess
@@ -727,7 +773,7 @@ public class TodosService {
             throw new RuntimeException("Access denied");
         }
 
-        return commentRepo.findByTodoOrderByCreatedAtDesc(todo);
+        return commentService.getComments(todoId);
     }
 
     // Time tracking methods
@@ -736,7 +782,6 @@ public class TodosService {
     public TimeTracking startTimeTracking(Long todoId, String email) {
         Workspace workspace = getCurrentWorkspace();
         validateWorkspaceAccess(workspace, email);
-        User user = getUserByEmail(email);
 
         Todos todo = todoRepo.findById(todoId)
                 .orElseThrow(() -> new RuntimeException("Todo not found"));
@@ -745,50 +790,19 @@ public class TodosService {
             throw new RuntimeException("Access denied");
         }
 
-        // Check if already tracking
-        if (timeRepo.findByUserAndEndTimeIsNull(user).isPresent()) {
-            throw new RuntimeException("You already have an active timer");
-        }
-
-        TimeTracking tracking = new TimeTracking();
-        tracking.setTodo(todo);
-        tracking.setUser(user);
-        tracking.setStartTime(LocalDateTime.now());
-
-        TimeTracking saved = timeRepo.save(tracking);
-
-        log.info("Timer started for task: {} by user: {}", todoId, email);
-
-        return saved;
+        return timeTrackingService.startTimeTracking(todoId, email);
     }
+
+    public TimeTracking getActiveTimer(String email) {
+        return timeTrackingService.getActiveTimer(email);
+    }
+
     @WorkspaceAccess
     @Transactional
     public TimeTracking stopTimeTracking(Long trackingId, String email) {
         Workspace workspace = getCurrentWorkspace();
         validateWorkspaceAccess(workspace, email);
-
-        TimeTracking tracking = timeRepo.findById(trackingId)
-                .orElseThrow(() -> new RuntimeException("Time tracking not found"));
-
-        if (!tracking.getTodo().getWorkspace().getId().equals(workspace.getId())) {
-            throw new RuntimeException("Access denied");
-        }
-
-        if (!tracking.getUser().getEmail().equals(email)) {
-            throw new RuntimeException("You can only stop your own timers");
-        }
-
-        tracking.stop();
-        TimeTracking saved = timeRepo.save(tracking);
-
-        // Add actual hours to todo
-        Todos todo = tracking.getTodo();
-        if (saved.getHoursLogged() != null) {
-            todo.addTimeSpent(saved.getHoursLogged().intValue());
-            todoRepo.save(todo);
-        }
-
-        return saved;
+        return timeTrackingService.stopTimeTracking(trackingId, email);
     }
 
     @WorkspaceAccess
@@ -804,7 +818,7 @@ public class TodosService {
             throw new RuntimeException("Access denied");
         }
 
-        return timeRepo.findByTodo(todo);
+        return timeTrackingService.getTimeTracking(todoId);
     }
 
     @WorkspaceAccess
@@ -820,6 +834,97 @@ public class TodosService {
             throw new RuntimeException("Access denied");
         }
 
-        return timeRepo.totalHoursForTodo(todo);
+        return timeTrackingService.getTotalTimeForTodo(todoId);
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public void bulkDelete(List<Long> ids, boolean permanent, String email) {
+        List<String> errors = new ArrayList<>();
+        for (Long id : ids) {
+            try {
+                // Call the internal method directly to avoid breaking transactional boundaries for self-invocation
+                deleteTaskInternal(id, permanent, email, false);
+            } catch (Exception e) {
+                log.warn("Failed to delete task {} in bulk: {}", id, e.getMessage());
+                errors.add("Task ID " + id + ": " + e.getMessage());
+            }
+        }
+        
+        if (!errors.isEmpty()) {
+            throw new RuntimeException("Bulk delete failed for some tasks:\n" + String.join("\n", errors));
+        }
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public void bulkUpdateStatus(List<Long> ids, Todos.Status status, String email) {
+        todoRepo.updateStatusByIds(ids, status);
+        log.info("Bulk updated status for {} tasks to {} by user: {}", ids.size(), status, email);
+        
+        // Trigger real-time updates for each unique project affected
+        todoRepo.findAllById(ids).stream()
+                .map(Todos::getProject)
+                .filter(Objects::nonNull)
+                .map(Project::getId)
+                .distinct()
+                .forEach(pid -> realtimeService.sendProjectUpdate(pid, "BULK_TASK_UPDATED", 
+                    Map.of("type", "STATUS", "value", status)));
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public void bulkAssign(List<Long> ids, Long userId, String email) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        todoRepo.updateAssigneeByIds(ids, user);
+        log.info("Bulk assigned {} tasks to user {} by user: {}", ids.size(), userId, email);
+
+        // Trigger real-time updates for each unique project affected
+        todoRepo.findAllById(ids).stream()
+                .map(Todos::getProject)
+                .filter(Objects::nonNull)
+                .map(Project::getId)
+                .distinct()
+                .forEach(pid -> realtimeService.sendProjectUpdate(pid, "BULK_TASK_UPDATED", 
+                    Map.of("type", "ASSIGNEE", "value", user.getName())));
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public Todos addAssigneeToTask(Long id, Long userId, String email) {
+        Todos todo = getTaskById(id, email);
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        todo.addAssignee(user);
+        Todos saved = todoRepo.save(todo);
+
+        // Publish domain events
+        saved.getDomainEvents().forEach(eventPublisher::publishEvent);
+        saved.clearDomainEvents();
+
+        // Broadcast a notification
+        notificationService.sendTaskAssignedNotification(saved, user);
+
+        return saved;
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public Todos removeAssigneeFromTask(Long id, Long userId, String email) {
+        Todos todo = getTaskById(id, email);
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        todo.removeAssignee(user);
+        Todos saved = todoRepo.save(todo);
+        
+        // Publish domain events
+        saved.getDomainEvents().forEach(eventPublisher::publishEvent);
+        saved.clearDomainEvents();
+        
+        return saved;
     }
 }

@@ -13,6 +13,8 @@ import java.util.List;
 public interface BoardRepository extends JpaRepository<Board, Long> {
     List<Board> findByProjectOrderByOrderIndex(Project project);
 
+    List<Board> findByProjectAndDeletedAtIsNull(Project project);
+
     boolean existsByProjectAndName(Project project, String name);
 
     @Query("SELECT COUNT(b) FROM Board b WHERE b.project.id = :projectId")

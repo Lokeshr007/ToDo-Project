@@ -1,4 +1,3 @@
-// com/loki/todo/controller/WorkspaceController.java
 package com.loki.todo.controller;
 
 import com.loki.todo.dto.WorkspaceDTO;

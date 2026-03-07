@@ -22,6 +22,7 @@ public class MemberService {
     private final MembershipRepository membershipRepo;
     private final WorkspaceRepository workspaceRepo;
     private final UserRepository userRepo;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<MemberDTO> getWorkspaceMembers(Long workspaceId, String email) {
@@ -87,6 +88,13 @@ public class MemberService {
         membership.setActive(true);
 
         Membership savedMembership = membershipRepo.save(membership);
+
+        // Send notification
+        try {
+            notificationService.sendWorkspaceMemberAddedNotification(workspace, newUser, inviter);
+        } catch (Exception e) {
+            log.error("Failed to send workspace member added notification", e);
+        }
 
         log.info("User {} added to workspace {} by {}", userEmail, workspaceId, invitedByEmail);
 

@@ -1,4 +1,3 @@
-// com/loki/todo/service/ProjectService.java
 package com.loki.todo.service;
 
 import com.loki.todo.dto.ProjectDTO;
@@ -27,6 +26,10 @@ public class ProjectService {
     private final UserRepository userRepo;
     private final BoardRepository boardRepo;
     private final TodosRepository todosRepo;
+    private final TodosService todosService;
+    private final NotificationService notificationService;
+    private final GoalRepository goalRepo;
+    private final NotificationRepository notificationRepo;
 
     private Membership validateWorkspaceAccess(Long workspaceId, String email) {
         Workspace workspace = workspaceRepo.findById(workspaceId)
@@ -49,6 +52,11 @@ public class ProjectService {
 
     @Transactional
     public Project createProject(Long workspaceId, String name, String description, String color, String email) {
+        return createProject(workspaceId, name, description, color, email, null);
+    }
+
+    @Transactional
+    public Project createProject(Long workspaceId, String name, String description, String color, String email, List<String> memberEmails) {
         Membership membership = validateWorkspaceAccess(workspaceId, email);
 
         if (projectRepo.existsByWorkspaceAndName(membership.getWorkspace(), name)) {
@@ -61,6 +69,24 @@ public class ProjectService {
         project.setColor(color != null ? color : "#6366f1");
         project.setWorkspace(membership.getWorkspace());
         project.setCreatedBy(membership.getUser());
+        project.getMembers().add(membership.getUser());
+        
+        // Add requested members
+        if (memberEmails != null && !memberEmails.isEmpty()) {
+            for (String memberEmail : memberEmails) {
+                userRepo.findByEmail(memberEmail).ifPresent(user -> {
+                    // Check if member belongs to workspace
+                    if (membershipRepo.findByUserAndWorkspace(user, membership.getWorkspace()).isPresent()) {
+                        if (!project.getMembers().contains(user)) {
+                            project.getMembers().add(user);
+                        }
+                    } else {
+                        log.warn("User {} is not a member of workspace {}, skipping project addition", memberEmail, workspaceId);
+                    }
+                });
+            }
+        }
+
         project.setCreatedAt(LocalDateTime.now());
         project.setUpdatedAt(LocalDateTime.now());
 
@@ -69,7 +95,8 @@ public class ProjectService {
         // Create default board
         createDefaultBoard(savedProject, membership.getUser());
 
-        log.info("Project created: {} in workspace: {} by user: {}", savedProject.getId(), workspaceId, email);
+        log.info("Project created: {} in workspace: {} by user: {} with {} members", 
+            savedProject.getId(), workspaceId, email, project.getMembers().size());
         return savedProject;
     }
 
@@ -138,14 +165,30 @@ public class ProjectService {
     public void deleteProject(Long projectId, String email) {
         Project project = validateProjectAccess(projectId, email);
 
-        // First, soft delete all tasks in this project
-        List<Board> boards = boardRepo.findByProjectIdOrderByOrderIndex(projectId);
-        for (Board board : boards) {
-            for (Todos todo : board.getTodos()) {
-                todo.softDelete();
-                todosRepo.save(todo);
-            }
+        // First, handle all tasks in this project
+        // When a project is deleted, we permanently delete its tasks to prevent orphaned items
+        // Including tasks that might have been soft-deleted
+        List<Todos> projectTasks = todosRepo.findByProjectIdIncludeDeleted(projectId);
+        for (Todos todo : projectTasks) {
+            todosService.deleteTaskInternal(todo.getId(), true, email, true);
         }
+
+        // Clean up Goals referencing this project
+        List<Goal> projectGoals = goalRepo.findByProjectId(projectId);
+        for (Goal goal : projectGoals) {
+            goal.setProject(null);
+            goalRepo.save(goal);
+        }
+
+        // Clean up Notifications referencing this project
+        List<Notification> projectNotifications = notificationRepo.findByProjectId(projectId);
+        for (Notification notification : projectNotifications) {
+            notification.setProject(null);
+            notificationRepo.save(notification);
+        }
+
+        // Clean up AI structures
+        todosRepo.clearAIProjectStructureReferences(projectId);
 
         // Then delete the project (this will cascade to boards and columns due to cascade settings)
         projectRepo.delete(project);
@@ -159,6 +202,73 @@ public class ProjectService {
     public List<Project> getProjects(Long workspaceId, String email) {
         Membership membership = validateWorkspaceAccess(workspaceId, email);
         return projectRepo.findByWorkspaceOrderByCreatedAtDesc(membership.getWorkspace());
+    }
+
+    @Transactional
+    public Project duplicateProject(Long projectId, String email) {
+        Project sourceProject = validateProjectAccess(projectId, email);
+        User user = userRepo.findByEmail(email).orElseThrow();
+
+        Project newProject = new Project();
+        newProject.setName(sourceProject.getName() + " (Copy)");
+        newProject.setDescription(sourceProject.getDescription());
+        newProject.setColor(sourceProject.getColor());
+        newProject.setWorkspace(sourceProject.getWorkspace());
+        newProject.setCreatedBy(user);
+        newProject.setCreatedAt(LocalDateTime.now());
+        newProject.setUpdatedAt(LocalDateTime.now());
+
+        Project savedProject = projectRepo.save(newProject);
+        createDefaultBoard(savedProject, user);
+        
+        log.info("Project duplicated: {} -> {} by user: {}", projectId, savedProject.getId(), email);
+        return savedProject;
+    }
+
+    @Transactional
+    public Project addMemberToProjectByEmail(Long projectId, String memberEmail, String email) {
+        User userToAdd = userRepo.findByEmail(memberEmail)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + memberEmail));
+        return addMemberToProject(projectId, userToAdd.getId(), email);
+    }
+
+    @Transactional
+    public Project addMemberToProject(Long projectId, Long userId, String email) {
+        Project project = validateProjectAccess(projectId, email);
+        User userToAdd = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check if user is in the workspace
+        workspaceRepo.findById(project.getWorkspace().getId())
+                .flatMap(w -> membershipRepo.findByUserAndWorkspace(userToAdd, w))
+                .orElseThrow(() -> new RuntimeException("User is not a member of this workspace"));
+
+        if (!project.getMembers().contains(userToAdd)) {
+            project.getMembers().add(userToAdd);
+            project.setUpdatedAt(LocalDateTime.now());
+            
+            // Send notification
+            try {
+                User addedBy = userRepo.findByEmail(email).orElse(null);
+                notificationService.sendProjectMemberAddedNotification(project, userToAdd, addedBy);
+            } catch (Exception e) {
+                log.error("Failed to send project member added notification", e);
+            }
+        }
+
+        return projectRepo.save(project);
+    }
+
+    @Transactional
+    public Project removeMemberFromProject(Long projectId, Long userId, String email) {
+        Project project = validateProjectAccess(projectId, email);
+        User userToRemove = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        project.getMembers().remove(userToRemove);
+        project.setUpdatedAt(LocalDateTime.now());
+
+        return projectRepo.save(project);
     }
 
     public long getBoardCount(Long projectId) {
@@ -211,10 +321,23 @@ public class ProjectService {
     }
 
     public ProjectDTO convertToDTO(Project project) {
+        Long boardCount = boardRepo.countByProjectId(project.getId());
+        Long taskCount = todosRepo.countByProjectId(project.getId());
+        Long completedTasks = todosRepo.countCompletedByProjectId(project.getId());
+        Double completionPercentage = taskCount > 0 ? (completedTasks * 100.0 / taskCount) : 0.0;
+        
+        Map<String, Long> tasksByStatus = new HashMap<>();
+        for (Todos.Status status : Todos.Status.values()) {
+            tasksByStatus.put(status.name(), todosRepo.countByProjectIdAndStatus(project.getId(), status));
+        }
+
         return ProjectDTO.fromEntity(
                 project,
-                getBoardCount(project.getId()),
-                getTaskCount(project.getId())
+                boardCount,
+                taskCount,
+                completedTasks,
+                completionPercentage,
+                tasksByStatus
         );
     }
 

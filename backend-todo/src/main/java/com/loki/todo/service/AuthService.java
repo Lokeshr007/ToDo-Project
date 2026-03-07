@@ -126,7 +126,7 @@ public class AuthService {
         Long workspaceId = membership.getWorkspace().getId();
 
         String accessToken =
-                jwtUtil.generateAccessToken(user.getEmail(), workspaceId);
+                jwtUtil.generateAccessToken(user.getEmail(), workspaceId, device.getId());
 
         String refreshToken =
                 createRefreshToken(user, device);
@@ -174,7 +174,7 @@ public class AuthService {
         Long workspaceId = membership.getWorkspace().getId();
 
         String accessToken =
-                jwtUtil.generateAccessToken(user.getEmail(), workspaceId);
+                jwtUtil.generateAccessToken(user.getEmail(), workspaceId, device.getId());
 
         String refreshToken =
                 createRefreshToken(user, device);
@@ -255,5 +255,54 @@ public class AuthService {
         if(userAgent.contains("iPhone")) return "iPhone";
 
         return "Browser Device";
+    }
+
+    public void sendLoginOtp(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepo.save(user);
+
+        emailService.sendOtp(email, otp);
+    }
+
+    public void sendForgotPasswordOtp(String email) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
+        userRepo.save(user);
+
+        emailService.sendOtp(email, otp);
+    }
+
+    public void verifyForgotPasswordOtp(String email, String otp) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!otp.equals(user.getOtp())) {
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP expired");
+        }
+
+        // Keep OTP for reset password step, maybe set a flag or just leave it until reset
+    }
+
+    public void resetPassword(String email, String newPassword) {
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setPassword(encoder.encode(newPassword));
+        user.setOtp(null);
+        user.setOtpExpiry(null);
+        userRepo.save(user);
     }
 }

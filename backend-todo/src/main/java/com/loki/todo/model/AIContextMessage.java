@@ -18,10 +18,10 @@ public class AIContextMessage {
 
     private String role; // USER, ASSISTANT
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String metadata;
 
     @ManyToOne

@@ -30,9 +30,10 @@ public class TodoCardDTO {
     private Long columnId;
     private String columnName;
     private Integer orderIndex;
-    private Integer storyPoints;  // Added this
+    private Integer storyPoints;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
+    private java.util.List<MemberDTO> assignees;
 
     public static TodoCardDTO fromEntity(Todos todo) {
         TodoCardDTO dto = new TodoCardDTO();
@@ -56,6 +57,13 @@ public class TodoCardDTO {
         dto.setOrderIndex((int) todo.getOrderIndex());
         dto.setCreatedAt(todo.getCreatedAt());
         dto.setCompletedAt(todo.getCompletedAt());
+
+        if (todo.getAssignees() != null) {
+            dto.setAssignees(todo.getAssignees().stream()
+                .map(u -> new MemberDTO(null, u.getId(), u.getName(), u.getEmail(), null, null))
+                .collect(java.util.stream.Collectors.toList()));
+        }
+
         return dto;
     }
 }

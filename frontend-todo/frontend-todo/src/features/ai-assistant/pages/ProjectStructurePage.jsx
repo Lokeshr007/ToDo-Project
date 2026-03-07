@@ -58,17 +58,17 @@ function ProjectStructurePage() {
     setLoading(true);
     try {
       // Fetch project details
-      const projectData = await projectApi.getProject(projectId);
+      const projectData = await projectApi.projectApi.getProject(projectId);
       setProject(projectData);
 
       // Fetch boards
-      const boardsData = await boardApi.getBoards(projectId);
+      const boardsData = await boardApi.boardApi.getBoards(projectId);
       setBoards(boardsData);
 
       // Fetch tasks for each board
       const allTasks = [];
       for (const board of boardsData) {
-        const boardTasks = await todoApi.getTodos({ boardId: board.id });
+        const boardTasks = await todoApi.todoApi.getTodos({ boardId: board.id });
         allTasks.push(...boardTasks);
       }
       setTasks(allTasks);

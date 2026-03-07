@@ -46,7 +46,8 @@ public class TimeBlockController {
     }
 
     @PostMapping("/reorder")
-    public ResponseEntity<Void> reorderTimeBlocks(@RequestBody List<TimeBlockDTO> blocks, @CurrentUser User user) {
+    public ResponseEntity<Void> reorderTimeBlocks(@RequestBody java.util.Map<String, List<TimeBlockDTO>> body, @CurrentUser User user) {
+        List<TimeBlockDTO> blocks = (List<TimeBlockDTO>) body.get("blocks");
         timeBlockService.reorderTimeBlocks(blocks, user);
         return ResponseEntity.ok().build();
     }

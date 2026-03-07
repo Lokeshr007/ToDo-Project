@@ -24,9 +24,10 @@ public class Board {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String name;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String color = "#6366f1";
@@ -53,6 +54,9 @@ public class Board {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     protected void onCreate() {

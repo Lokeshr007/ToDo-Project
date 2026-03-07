@@ -183,7 +183,7 @@ public class KanbanService {
         User user = getUserByEmail(email);
 
         // Check if column with same name exists
-        if (columnRepo.existsByBoardAndName(board, name)) {
+        if (columnRepo.existsByBoardAndNameAndDeletedAtIsNull(board, name)) {
             throw new RuntimeException("Column with this name already exists");
         }
 
@@ -460,8 +460,13 @@ public class KanbanService {
         Todos.Priority priority = request.getPriorityEnum() != null ?
                 request.getPriorityEnum() : Todos.Priority.MEDIUM;
 
+        String itemTitle = request.getItem();
+        if (itemTitle != null && itemTitle.length() > 1000) {
+            itemTitle = itemTitle.substring(0, 995) + "...";
+        }
+
         Todos todo = new Todos(
-                request.getItem(),
+                itemTitle,
                 request.getDescription(),
                 column.getBoard().getProject().getWorkspace(),
                 creator,
@@ -472,6 +477,20 @@ public class KanbanService {
                         userRepo.findById(request.getAssignedUserId()).orElse(null) : null,
                 request.getStoryPoints()
         );
+
+        // Process multiple assignees
+        if (request.getAssigneeIds() != null && !request.getAssigneeIds().isEmpty()) {
+            for (Long assigneeId : request.getAssigneeIds()) {
+                userRepo.findById(assigneeId).ifPresent(user -> {
+                    if (membershipRepo.existsByUserAndWorkspace(user, column.getBoard().getProject().getWorkspace())) {
+                        todo.addAssignee(user);
+                    }
+                });
+            }
+        } else if (todo.getAssignedTo() != null) {
+            // If only single assignedTo exists, add it to assignees as well
+            todo.addAssignee(todo.getAssignedTo());
+        }
 
         todo.setBoard(column.getBoard());
         todo.setBoardColumn(column);
@@ -494,6 +513,44 @@ public class KanbanService {
         ));
 
         log.info("Task created in column: {} by user: {}", columnId, email);
+
+        return TodoCardDTO.fromEntity(savedTodo);
+    }
+
+    @WorkspaceAccess
+    @Transactional
+    public TodoCardDTO updateTaskAssignees(Long taskId, List<Long> userIds, String email) {
+        Todos todo = todoRepo.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        validateBoardAccess(todo.getBoard(), email);
+        User performer = getUserByEmail(email);
+
+        List<User> newAssignees = userRepo.findAllById(userIds);
+        
+        // Remove old assignees
+        todo.getAssignees().clear();
+        
+        // Add new assignees
+        todo.getAssignees().addAll(newAssignees);
+        
+        // Also update the primary assignedTo for backward compatibility
+        if (!newAssignees.isEmpty()) {
+            todo.setAssignedTo(newAssignees.get(0));
+        } else {
+            todo.setAssignedTo(null);
+        }
+
+        Todos savedTodo = todoRepo.save(todo);
+
+        // Record activity
+        BoardActivity activity = new BoardActivity();
+        activity.setType(BoardActivity.ActivityType.TASK_UPDATED);
+        activity.setBoard(todo.getBoard());
+        activity.setPerformedBy(performer);
+        activity.setTodo(todo);
+        activity.setDescription(String.format("Assignees updated for task: %s", todo.getItem()));
+        activityRepo.save(activity);
 
         return TodoCardDTO.fromEntity(savedTodo);
     }

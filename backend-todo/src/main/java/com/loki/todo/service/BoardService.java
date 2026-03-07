@@ -89,7 +89,7 @@ public class BoardService {
 
         // Set order index if not set
         if (column.getOrderIndex() == 0) {
-            int maxOrder = columnRepo.findByBoardOrderByOrderIndex(board).size();
+            int maxOrder = columnRepo.findByBoardAndDeletedAtIsNullOrderByOrderIndex(board).size();
             column.setOrderIndex(maxOrder);
         }
 
@@ -101,14 +101,14 @@ public class BoardService {
     public List<BoardColumn> getColumns(Long boardId) {
         Board board = boardRepo.findById(boardId)
                 .orElseThrow(() -> new RuntimeException("Board not found"));
-        return columnRepo.findByBoardOrderByOrderIndex(board);
+        return columnRepo.findByBoardAndDeletedAtIsNullOrderByOrderIndex(board);
     }
 
     // Also add this method to get columns for a board
     public List<BoardColumn> getBoardColumns(Long boardId) {
         Board board = boardRepo.findById(boardId)
                 .orElseThrow(() -> new RuntimeException("Board not found"));
-        return columnRepo.findByBoardOrderByOrderIndex(board);
+        return columnRepo.findByBoardAndDeletedAtIsNullOrderByOrderIndex(board);
     }
 
     private void createDefaultColumns(Board board, User user) {
@@ -129,7 +129,10 @@ public class BoardService {
             column.setCreatedBy(user);
             column.setType(types[i]);
             column.setColor(colors[i]);
-            columnRepo.save(column);
+            BoardColumn savedColumn = columnRepo.save(column);
+            if (board.getColumns() != null) {
+                board.getColumns().add(savedColumn);
+            }
         }
     }
 
@@ -185,7 +188,9 @@ public class BoardService {
     }
 
     public BoardDTO convertToDTO(Board board) {
-        return BoardDTO.fromEntity(board, getTaskCount(board.getId()));
+        long taskCount = getTaskCount(board.getId());
+        long completedTaskCount = todosRepo.countByBoardIdAndStatus(board.getId(), Todos.Status.COMPLETED);
+        return BoardDTO.fromEntity(board, taskCount, completedTaskCount);
     }
 
     public List<BoardDTO> convertToDTOs(List<Board> boards) {
@@ -210,7 +215,7 @@ public class BoardService {
 
         Board savedBoard = boardRepo.save(newBoard);
 
-        List<BoardColumn> sourceColumns = columnRepo.findByBoardOrderByOrderIndex(sourceBoard);
+        List<BoardColumn> sourceColumns = columnRepo.findByBoardAndDeletedAtIsNullOrderByOrderIndex(sourceBoard);
         for (BoardColumn sourceCol : sourceColumns) {
             BoardColumn newCol = new BoardColumn();
             newCol.setName(sourceCol.getName());

@@ -66,6 +66,7 @@ public class AIResponseParser {
                     task.setEstimatedHours(getDoubleSafely(taskNode, "estimatedHours", 1.0));
                     task.setCategory(getStringSafely(taskNode, "category", "General"));
                     task.setSubCategory(getStringSafely(taskNode, "subCategory", ""));
+                    task.setAssignedToId(getStringSafely(taskNode, "assignedToId", null));
 
                     // Parse arrays
                     if (taskNode.has("tags") && taskNode.get("tags").isArray()) {
@@ -101,10 +102,39 @@ public class AIResponseParser {
     }
 
     private String cleanResponse(String response) {
-        return response.replaceAll("```json\\s*", "")
-                .replaceAll("```\\s*", "")
-                .replaceAll("```", "")
+        if (response == null || response.trim().isEmpty()) {
+            return "{}";
+        }
+
+        // Remove markdown code blocks
+        String cleaned = response.replaceAll("(?s)```json\\s*(.*?)\\s*```", "$1")
+                .replaceAll("(?s)```\\s*(.*?)\\s*```", "$1")
                 .trim();
+
+        // If it's still not pure JSON, try to extract the main JSON block
+        try {
+            int firstBrace = cleaned.indexOf('{');
+            int firstBracket = cleaned.indexOf('[');
+            
+            int start = -1;
+            int last = -1;
+            
+            if (firstBrace != -1 && (firstBracket == -1 || firstBrace < firstBracket)) {
+                start = firstBrace;
+                last = cleaned.lastIndexOf('}');
+            } else if (firstBracket != -1) {
+                start = firstBracket;
+                last = cleaned.lastIndexOf(']');
+            }
+
+            if (start != -1 && last != -1 && last > start) {
+                return cleaned.substring(start, last + 1);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract JSON from response using index parsing", e);
+        }
+
+        return cleaned;
     }
 
     private String getStringSafely(JsonNode node, String field, String defaultValue) {

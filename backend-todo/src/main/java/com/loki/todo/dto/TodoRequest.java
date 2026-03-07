@@ -18,10 +18,12 @@ public class TodoRequest {
     private LocalDate dueDate;
     private String dueTime;
     private LocalDateTime dueDateTime;
-    private Long assignedToId;  // This is the field name
+    private Long assignedToId;  // Single primary assignee
+    private java.util.List<Long> assigneeIds; // Multiple assignees
     private Long projectId;
     private Long boardId;
     private Long columnId;
+    private Long goalId;
     private Integer storyPoints;
     private String[] labels;
 

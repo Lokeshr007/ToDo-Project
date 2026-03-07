@@ -59,6 +59,7 @@ public class WorkspaceFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         // Skip filter for auth endpoints and public endpoints
         boolean shouldSkip = path.startsWith("/api/auth") ||
+                path.startsWith("/ws") ||
                 path.startsWith("/login") ||
                 path.startsWith("/oauth2") ||
                 path.startsWith("/public") ||

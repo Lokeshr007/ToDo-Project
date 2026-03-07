@@ -39,6 +39,9 @@ import DeviceSessions from "@/features/profile/pages/DeviceSessions";
 import TodoEnvironment from "@/features/todos/pages/TodoEnvironment";
 import TimeCapsule from "@/features/todos/pages/TimeCapsule";
 import Help from "@/features/help/pages/Help";
+import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
+import Workspaces from "@/features/workspace/pages/Workspaces";
+import WorkloadWizard from "@/features/ai-assistant/pages/WorkloadWizard";
 
 const AppRoutes = () => {
   const { loading, user } = useAuth();
@@ -84,6 +87,8 @@ const AppRoutes = () => {
           {/* Projects */}
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:projectId" element={<ProjectView />} />
+          <Route path="workspaces" element={<Workspaces />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           
           {/* Boards */}
           <Route path="boards" element={<Boards />} />
@@ -103,6 +108,7 @@ const AppRoutes = () => {
             <Route path="learning-paths" element={<LearningPathPage />} />
             <Route path="learning-paths/:pathId" element={<LearningPathPage />} />
             <Route path="project-structure/:projectId" element={<ProjectStructurePage />} />
+            <Route path="workload-wizard" element={<WorkloadWizard />} />
           </Route>
           
           {/* Profile */}

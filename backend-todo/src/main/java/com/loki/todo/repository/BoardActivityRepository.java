@@ -23,4 +23,9 @@ public interface BoardActivityRepository extends JpaRepository<BoardActivity, Lo
 
     @Query("SELECT a FROM BoardActivity a WHERE a.todo.id = :todoId ORDER BY a.timestamp DESC")
     List<BoardActivity> findByTodoId(@Param("todoId") Long todoId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM BoardActivity b WHERE b.todo = :todo")
+    void deleteByTodo(@Param("todo") com.loki.todo.model.Todos todo);
 }

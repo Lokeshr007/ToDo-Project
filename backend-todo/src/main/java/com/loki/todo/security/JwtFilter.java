@@ -21,6 +21,15 @@ public class JwtFilter extends OncePerRequestFilter {
     private JwtUtil jwtUtil;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/ws") || 
+               path.startsWith("/api/auth") || 
+               path.startsWith("/public") || 
+               path.equals("/error");
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
@@ -37,8 +46,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 String username = jwtUtil.extractUsername(token);
                 Long workspaceId = jwtUtil.extractWorkspaceId(token);
+                Long sessionId = jwtUtil.extractSessionId(token);
 
                 WorkspaceContext.setWorkspaceId(workspaceId);
+                SessionContext.setSessionId(sessionId);
 
                 if (username != null) {
 
@@ -69,8 +80,9 @@ public class JwtFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            // Clear workspace context
+            // Clear contexts
             WorkspaceContext.clear();
+            SessionContext.clear();
         }
     }
 }

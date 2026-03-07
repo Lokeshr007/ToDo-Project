@@ -19,8 +19,9 @@ public class EnhancedAITask {
     private Long id;
 
     private String title;
+    private String assignedToId;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private Integer dayNumber;
@@ -45,8 +46,10 @@ public class EnhancedAITask {
     @Column(name = "prerequisite")
     private List<String> prerequisites = new ArrayList<>();
 
+    @Column(columnDefinition = "TEXT")
     private String resourceLinks; // JSON array of resources
 
+    @Column(columnDefinition = "TEXT")
     private String deliverables; // What to produce
 
     @ManyToOne

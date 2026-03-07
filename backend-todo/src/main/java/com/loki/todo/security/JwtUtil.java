@@ -45,11 +45,12 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateAccessToken(String email, Long workspaceId){
+    public String generateAccessToken(String email, Long workspaceId, Long sessionId){
 
         return Jwts.builder()
                 .setSubject(email)
                 .claim("workspaceId", workspaceId)
+                .claim("sessionId", sessionId)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000*60*60))
                 .signWith(getKey())
@@ -57,10 +58,13 @@ public class JwtUtil {
     }
 
     public Long extractWorkspaceId(String token){
-
         Claims claims = extractClaims(token);
-
         return claims.get("workspaceId", Long.class);
+    }
+
+    public Long extractSessionId(String token){
+        Claims claims = extractClaims(token);
+        return claims.get("sessionId", Long.class);
     }
 
     public String extractUsername(String token){

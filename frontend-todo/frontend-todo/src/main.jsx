@@ -18,6 +18,8 @@ import { ExperienceProvider } from "@/experience/ExperienceContext";
 // Experience UI
 import CoreLoader from "@/experience/CoreLoader";
 import QuantumEntrance from "@/experience/QuantumEntrance";
+import QuantumToaster from "@/shared/components/QuantumToaster";
+import RealtimeEvents from "@/shared/components/RealtimeEvents";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +48,8 @@ createRoot(document.getElementById("root")).render(
                         },
                       }}
                     />
+                    <QuantumToaster />
+                    <RealtimeEvents />
 
                     <CoreLoader />
                     <QuantumEntrance />

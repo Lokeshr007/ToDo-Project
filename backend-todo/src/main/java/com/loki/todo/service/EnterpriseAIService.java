@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,12 +34,21 @@ public class EnterpriseAIService {
     private final EnhancedAITaskRepository taskRepository;
     private final AIContextRepository contextRepository;
     private final AIProjectStructureRepository projectStructureRepository;
+    private final MembershipRepository membershipRepository;
 
     private final ProjectService projectService;
     private final BoardService boardService;
     private final TodosService todosService;
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final GoalService goalService;
+    private final ReminderService reminderService;
+    private final TimeBlockService timeBlockService;
+    private final GoalRepository goalRepository;
+    private final ProjectRepository projectRepository;
+    private final TodosRepository todosRepository;
+    private final BoardColumnRepository columnRepository;
+    private final BoardRepository boardRepository;
 
     @Transactional
     public EnterpriseAIResponseDTO processRequest(EnterpriseAIRequestDTO request, User user) {
@@ -56,6 +66,10 @@ public class EnterpriseAIService {
                 return processChat(request, user, context);
             case "REFINE":
                 return refinePlan(request, user, context);
+            case "ACCEPT_TASKS":
+                return handleAcceptTasks(request, user);
+            case "ASSIGN_TASK":
+                return handleAssignTask(request, user);
             default:
                 throw new RuntimeException("Unknown action: " + action);
         }
@@ -85,14 +99,25 @@ public class EnterpriseAIService {
 
             // Analyze document structure
             Map<String, Object> documentAnalysis = advancedFileParser.analyzeDocument(extractedText, fileType);
+            if (request.getDurationDays() != null) {
+                documentAnalysis.put("durationDays", request.getDurationDays());
+            }
 
             // Build AI prompt
-            String prompt = promptBuilder.buildPlanParsingPrompt(
+            String prompt;
+            if (extractedText.contains("image-based or contains no selectable text")) {
+                prompt = "The user uploaded a PDF that appears to be image-based or scanned (no selectable text). " +
+                        "Please respond in a friendly way explaining that you can't read the curriculum directly from this specific file, " +
+                        "but you can still generate a generic learning plan if they tell you the topic, or they can copy-paste the text instead. " +
+                        "Return a valid JSON plan for 'General Learning' as a placeholder.";
+            } else {
+                prompt = promptBuilder.buildPlanParsingPrompt(
                     extractedText,
                     documentAnalysis,
                     context,
                     request.getUserPreferences()
-            );
+                );
+            }
 
             // Call AI
             String aiResponse = openAIClient.sendMessage(prompt);
@@ -167,7 +192,9 @@ public class EnterpriseAIService {
 
         } catch (Exception e) {
             log.error("Failed to parse plan", e);
-            throw new RuntimeException("Failed to parse plan: " + e.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            e.printStackTrace(new java.io.PrintWriter(sw));
+            throw new RuntimeException("Failed to parse plan: " + e.getMessage() + "\nStackTrace: " + sw.toString());
         }
     }
 
@@ -176,13 +203,23 @@ public class EnterpriseAIService {
             EnhancedAIPlan plan = planRepository.findByIdAndUser(request.getPlanId(), user)
                     .orElseThrow(() -> new RuntimeException("Plan not found"));
 
-            List<EnhancedAITaskDTO> tasks = generateTasksFromPlan(plan, user, context);
+            List<EnhancedAITaskDTO> tasks;
+            List<EnhancedAITask> existingTasks = taskRepository.findByPlanOrdered(plan);
+            if (existingTasks != null && !existingTasks.isEmpty()) {
+                tasks = existingTasks.stream().map(this::convertToDTO).collect(Collectors.toList());
+            } else {
+                tasks = generateTasksFromPlan(plan, user, context);
+            }
 
             AIProjectStructureDTO projectStructureDTO = null;
-            if (request.getCreateProject() != null && request.getCreateProject() && request.getWorkspaceId() != null) {
+            if (plan.getProjectStructure() != null) {
+                projectStructureDTO = convertToProjectStructureDTO(plan.getProjectStructure());
+            } else if (request.getCreateProject() != null && request.getCreateProject() && request.getWorkspaceId() != null) {
                 AIProjectStructure projectStructure = createProjectStructure(plan, tasks, user, request.getWorkspaceId());
                 if (projectStructure != null) {
                     projectStructureDTO = convertToProjectStructureDTO(projectStructure);
+                    plan.setProjectStructure(projectStructure);
+                    planRepository.save(plan);
                 }
             }
 
@@ -213,7 +250,7 @@ public class EnterpriseAIService {
 
     private EnterpriseAIResponseDTO processChat(EnterpriseAIRequestDTO request, User user, AIContext context) {
         try {
-            // Get current context
+            // Get current context and app state
             Map<String, Object> contextData = new HashMap<>();
             contextData.put("learningStyle", context.getLearningStyle());
             contextData.put("attentionSpan", context.getAttentionSpan());
@@ -226,26 +263,106 @@ public class EnterpriseAIService {
                 contextData.put("planProgress", context.getProgressRate());
             }
 
+            // Gather real-time workspace context
+            if (request.getWorkspaceId() != null) {
+                workspaceRepository.findById(request.getWorkspaceId()).ifPresent(ws -> {
+                    contextData.put("currentWorkspace", ws.getName());
+                    contextData.put("workspaceId", ws.getId());
+                    
+                    // Projects
+                    List<Project> projects = projectRepository.findByWorkspace(ws);
+                    contextData.put("projects", projects.stream()
+                        .filter(Objects::nonNull)
+                        .map(Project::getName)
+                        .collect(Collectors.toList()));
+                    
+                    // Tasks
+                    List<Todos> tasks = todosRepository.findByWorkspaceAndStatusNot(ws, Todos.Status.COMPLETED);
+                    contextData.put("activeTasks", tasks.stream()
+                        .filter(t -> t != null && t.getItem() != null)
+                        .limit(10)
+                        .map(t -> t.getItem() + " (Priority: " + t.getPriority() + ")")
+                        .collect(Collectors.toList()));
+                    contextData.put("activeTaskCount", tasks.size());
+
+                    // Team Members (Crucial for "Assignment" feature)
+                    List<Membership> members = membershipRepository.findByWorkspaceAndActiveTrue(ws);
+                    contextData.put("teamMembers", members.stream()
+                        .filter(m -> m != null && m.getUser() != null)
+                        .map(m -> m.getUser().getName() + " (ID: " + m.getUser().getId() + ", Role: " + m.getRole() + ")")
+                        .collect(Collectors.toList()));
+                });
+            } else {
+                // Fallback to user-wide context
+                List<Project> userProjects = projectRepository.findByCreatedBy(user);
+                contextData.put("userProjects", userProjects.stream().map(Project::getName).collect(Collectors.toList()));
+                
+                List<Todos> userTasks = todosRepository.findByAssignedToAndStatusNot(user, Todos.Status.COMPLETED);
+                contextData.put("userActiveTasks", userTasks.stream().limit(10).map(Todos::getItem).collect(Collectors.toList()));
+            }
+
+            // Create and save user message
+            AIContextMessage userMsg = new AIContextMessage();
+            userMsg.setRole("USER");
+            userMsg.setContent(request.getMessage());
+            userMsg.setContext(context);
+            context.getMessageHistory().add(userMsg);
+
             // Build chat prompt
             String prompt = promptBuilder.buildChatPrompt(
                     request.getMessage(),
+                    context.getMessageHistory(),
                     contextData,
                     request.getContext() != null ? request.getContext() : new HashMap<>()
             );
 
+            // Set system prompt for ChatGPT-like personality
+            String systemPrompt = """
+                You are the Enterprise Executive AI Assistant for the Productivity Platform.
+                You help the user manage their professional and personal goals with the precision of a top-tier project manager 
+                and the conversational ease of ChatGPT.
+                
+                Guidelines:
+                1. Always acknowledge user's current projects and tasks.
+                2. Provide concrete steps for productivity improvements.
+                3. Be proactive: if a user asks about progress, analyze their task list.
+                4. Maintain a supportive, highly intelligent persona.
+                """;
+
             // Call AI
-            String aiResponse = openAIClient.sendMessage(prompt);
+            log.info("Sending chat request to AI client for user: {}", user.getEmail());
+            String aiResponse = openAIClient.sendMessage(prompt, systemPrompt);
+            log.info("AI response received (length: {})", aiResponse != null ? aiResponse.length() : "null");
+
+            // Create and save AI response
+            AIContextMessage aiMsg = new AIContextMessage();
+            aiMsg.setRole("ASSISTANT");
+            aiMsg.setContent(aiResponse);
+            aiMsg.setContext(context);
+            context.getMessageHistory().add(aiMsg);
+
+            // Limit message history to prevent repetition and token bloat (keep last 15 messages)
+            if (context.getMessageHistory().size() > 15) {
+                int toRemove = context.getMessageHistory().size() - 15;
+                for (int i = 0; i < toRemove; i++) {
+                    context.getMessageHistory().remove(0);
+                }
+            }
 
             // Update context
             context.setInteractionCount(context.getInteractionCount() + 1);
             context.setLastInteraction(LocalDateTime.now());
             contextRepository.save(context);
 
+            // Parse actions from AI response
+            List<Map<String, Object>> executedActions = parseAndExecuteActions(aiResponse, user, request.getWorkspaceId());
+
             EnterpriseAIResponseDTO response = new EnterpriseAIResponseDTO();
             response.setSessionId(context.getSessionId());
             response.setAction("CHAT");
             response.setSuccess(true);
             response.setMessage(aiResponse);
+            response.setData(Map.of("executedActions", executedActions));
 
             return response;
 
@@ -321,8 +438,16 @@ public class EnterpriseAIService {
 
     private List<EnhancedAITaskDTO> generateTasksFromPlan(EnhancedAIPlan plan, User user, AIContext context) {
         try {
+            Map<String, Object> additionalContext = new HashMap<>();
+            if (plan.getWorkspace() != null) {
+                List<Membership> teamMembers = membershipRepository.findByWorkspaceAndActiveTrue(plan.getWorkspace());
+                additionalContext.put("teamMembers", teamMembers.stream()
+                    .map(m -> m.getUser().getName() + " (ID: " + m.getUser().getId() + ", Role: " + m.getRole() + ")")
+                    .collect(Collectors.toList()));
+            }
+
             // Build task generation prompt
-            String prompt = promptBuilder.buildTaskGenerationPrompt(plan, context);
+            String prompt = promptBuilder.buildTaskGenerationPrompt(plan, context, additionalContext);
 
             // Call AI
             String aiResponse = openAIClient.sendMessage(prompt);
@@ -347,6 +472,7 @@ public class EnterpriseAIService {
                 task.setPrerequisites(taskDTO.getPrerequisites() != null ? taskDTO.getPrerequisites() : new ArrayList<>());
                 task.setResourceLinks(taskDTO.getResourceLinks());
                 task.setDeliverables(taskDTO.getDeliverables());
+                task.setAssignedToId(taskDTO.getAssignedToId());
                 task.setParentTaskId(taskDTO.getParentTaskId());
                 task.setOrderIndex(taskDTO.getOrderIndex() != null ? taskDTO.getOrderIndex() : 0);
 
@@ -375,48 +501,69 @@ public class EnterpriseAIService {
                                                       User user, Long workspaceId) {
         try {
             // Create project
-            String projectName = plan.getTitle() + " - 60 Day Plan";
+            String rawProjectName = plan.getTitle() + " - " + plan.getDurationDays() + " Day Plan";
+            String projectName = truncate(rawProjectName, 255);
+            String projectDesc = truncate(plan.getSummary() != null ? plan.getSummary() : "Dynamic learning plan for " + plan.getTitle(), 255);
             Project project = projectService.createProject(
                     workspaceId,
                     projectName,
-                    plan.getSummary() != null ? plan.getSummary() : "Learning plan generated by AI",
+                    projectDesc,
                     generateProjectColor(),
                     user.getEmail()
             );
 
-            // Create boards based on weeks
+            // Cleanup the default board created by projectService if we're doing AI WEEK structure
+            boardRepository.findByProjectAndDeletedAtIsNull(project).stream()
+                    .filter(b -> "Default Board".equals(b.getName()))
+                    .forEach(b -> {
+                        b.setDeletedAt(LocalDateTime.now());
+                        boardRepository.save(b);
+                    });
+
+            // Create boards based on weeks - SORTED TreeMap ensure Week 1 comes first
             Map<Integer, List<EnhancedAITaskDTO>> tasksByWeek = tasks.stream()
                     .filter(t -> t.getWeekNumber() != null)
-                    .collect(Collectors.groupingBy(EnhancedAITaskDTO::getWeekNumber));
+                    .collect(Collectors.groupingBy(
+                            EnhancedAITaskDTO::getWeekNumber,
+                            TreeMap::new,
+                            Collectors.toList()
+                    ));
 
             AIProjectStructure projectStructure = new AIProjectStructure();
-            projectStructure.setProjectName(projectName);
-            projectStructure.setProjectDescription(plan.getSummary() != null ? plan.getSummary() : "");
+            projectStructure.setProjectName(truncate(projectName, 255));
+            projectStructure.setProjectDescription(projectDesc);
             projectStructure.setProjectColor(generateProjectColor());
             projectStructure.setCreatedProjectId(project.getId());
             projectStructure.setPlan(plan);
 
             List<AIBoardStructure> boardStructures = new ArrayList<>();
 
-            // Create boards for each week
+            // Calculate total weeks for better titles
+            int totalWeeks = tasksByWeek.isEmpty() ? 0 : Collections.max(tasksByWeek.keySet());
+
+            // Create boards for each week in order
             for (Map.Entry<Integer, List<EnhancedAITaskDTO>> entry : tasksByWeek.entrySet()) {
                 Integer week = entry.getKey();
                 List<EnhancedAITaskDTO> weekTasks = entry.getValue();
 
+                // Sort tasks within the week by orderIndex
+                weekTasks.sort(Comparator.comparing(t -> t.getOrderIndex() != null ? t.getOrderIndex() : 0));
+
                 // Create board using correct parameters
-                String boardName = "Week " + week + ": " + getWeekTheme(weekTasks);
+                String boardName = truncate("Week " + week + " of " + totalWeeks + ": " + getWeekTheme(weekTasks), 255);
+                String boardDesc = truncate("Tasks for week " + week + " of your 60-day plan", 255);
                 Board board = boardService.createBoard(
                         project.getId(),
                         boardName,
-                        "Tasks for week " + week + " of your 60-day plan",
+                        boardDesc,
                         generateWeekColor(week),
                         user.getEmail()
                 );
 
                 AIBoardStructure boardStructure = new AIBoardStructure();
-                boardStructure.setBoardName(boardName);
-                boardStructure.setBoardDescription(board.getDescription());
-                boardStructure.setBoardColor(board.getColor());
+                boardStructure.setBoardName(truncate(boardName, 255));
+                boardStructure.setBoardDescription(truncate(board.getDescription(), 255));
+                boardStructure.setBoardColor(truncate(board.getColor(), 255));
                 boardStructure.setOrderIndex(week);
                 boardStructure.setCreatedBoardId(board.getId());
                 boardStructure.setProjectStructure(projectStructure);
@@ -427,7 +574,7 @@ public class EnterpriseAIService {
                 List<AIColumnStructure> columnStructures = new ArrayList<>();
                 for (BoardColumn column : columns) {
                     AIColumnStructure columnStructure = new AIColumnStructure();
-                    columnStructure.setColumnName(column.getName());
+                    columnStructure.setColumnName(truncate(column.getName(), 255));
                     columnStructure.setColumnType(column.getType().name());
                     columnStructure.setColumnColor(column.getColor());
                     columnStructure.setOrderIndex((int) column.getOrderIndex());
@@ -440,12 +587,32 @@ public class EnterpriseAIService {
                 boardStructure.setColumns(columnStructures);
                 boardStructures.add(boardStructure);
 
-                // Create todos from tasks
-                createTodosFromTasks(board, weekTasks, user);
+                // Create a Weekly Goal for this week's tasks
+                Goal weeklyGoal = new Goal();
+                weeklyGoal.setTitle(truncate(boardName, 255));
+                weeklyGoal.setDescription(truncate("Complete tasks for week " + week, 255));
+                weeklyGoal.setType("WEEKLY");
+                weeklyGoal.setTarget(weekTasks.size());
+                weeklyGoal.setUnit("tasks");
+                weeklyGoal.setStartDate(LocalDate.now().plusWeeks(week - 1));
+                weeklyGoal.setEndDate(LocalDate.now().plusWeeks(week));
+                weeklyGoal.setUser(user);
+                weeklyGoal.setWorkspace(workspaceRepository.findById(workspaceId).orElse(null));
+                weeklyGoal.setProject(project);
+                weeklyGoal.setPriority("MEDIUM");
+                weeklyGoal.setColor(generateWeekColor(week));
+                
+                Goal savedGoal = goalRepository.save(weeklyGoal);
+
+                // Create todos from tasks and link to the goal
+                createTodosFromTasks(board, weekTasks, user, savedGoal.getId());
             }
 
             projectStructure.setBoards(boardStructures);
-            return projectStructureRepository.save(projectStructure);
+            AIProjectStructure savedStructure = projectStructureRepository.save(projectStructure);
+            
+            // Removed realtimeService for compilation fix
+            return savedStructure;
 
         } catch (Exception e) {
             log.error("Failed to create project structure", e);
@@ -453,28 +620,77 @@ public class EnterpriseAIService {
         }
     }
 
-    private void createTodosFromTasks(Board board, List<EnhancedAITaskDTO> tasks, User user) {
+    private void createTodosFromTasks(Board board, List<EnhancedAITaskDTO> tasks, User user, Long goalId) {
         try {
+            List<Todos> realTodosToSave = new ArrayList<>();
+            Workspace workspace = board.getProject().getWorkspace();
+            
+            // Re-fetch columns directly from DB since the created Board entity might not have them flushed in memory yet
+            List<BoardColumn> fetchedColumns = columnRepository.findByBoardAndDeletedAtIsNullOrderByOrderIndex(board);
+
             for (EnhancedAITaskDTO taskDTO : tasks) {
-                TodoRequest request = new TodoRequest();
-                request.setItem(taskDTO.getTitle());
-                request.setDescription(taskDTO.getDescription());
-                request.setPriority(taskDTO.getPriority());
-                request.setDueDate(taskDTO.getSuggestedDueDate());
-                request.setBoardId(board.getId());
+                Todos newTodo = new Todos();
+                // Clean native titles (user requested no AI markers)
+                newTodo.setItem(truncate(taskDTO.getTitle(), 255));
+                newTodo.setDescription(truncate(taskDTO.getDescription() != null ? taskDTO.getDescription() : "Task from roadmap.", 255));
+                newTodo.setStatus(Todos.Status.PENDING);
+                
+                Todos.Priority priority = Todos.Priority.NORMAL;
+                try {
+                    if (taskDTO.getPriority() != null) {
+                        priority = Todos.Priority.valueOf(taskDTO.getPriority().toUpperCase());
+                    }
+                } catch (Exception e) {
+                    priority = Todos.Priority.NORMAL; // fallback
+                }
+                newTodo.setPriority(priority);
 
-                // Add to first column by default
-                if (board.getColumns() != null && !board.getColumns().isEmpty()) {
-                    request.setColumnId(board.getColumns().get(0).getId());
+                newTodo.setWorkspace(workspace);
+                newTodo.setProject(board.getProject());
+                newTodo.setBoard(board);
+                
+                // Add to first column safely
+                List<BoardColumn> fallbackColumns = (fetchedColumns != null && !fetchedColumns.isEmpty()) ? fetchedColumns : board.getColumns();
+                if (fallbackColumns != null && !fallbackColumns.isEmpty()) {
+                    newTodo.setBoardColumn(fallbackColumns.get(0));
+                    newTodo.setOrderIndex(realTodosToSave.size());
                 }
 
-                // Add labels
-                if (taskDTO.getTags() != null && !taskDTO.getTags().isEmpty()) {
-                    request.setLabels(taskDTO.getTags().toArray(new String[0]));
+                newTodo.setCreatedBy(user);
+                
+                // Try to assign based on record from AI, otherwise default to current user
+                User assignedUser = user;
+                if (taskDTO.getAssignedToId() != null) {
+                    try {
+                        Long assignedId = Long.parseLong(taskDTO.getAssignedToId());
+                        assignedUser = userRepository.findById(assignedId).orElse(user);
+                    } catch (Exception e) {
+                        log.warn("Failed to find assigned user by ID: " + taskDTO.getAssignedToId() + ", using default.");
+                    }
+                }
+                newTodo.setAssignedTo(assignedUser);
+                newTodo.setCreatedAt(LocalDateTime.now());
+                newTodo.setUpdatedAt(LocalDateTime.now());
+
+                newTodo.setDueDate(taskDTO.getSuggestedDueDate());
+                
+                if (goalId != null) {
+                    goalRepository.findById(goalId).ifPresent(newTodo::setGoal);
                 }
 
-                todosService.addTask(request, user.getEmail());
+                // Append any suggested tags
+                if (taskDTO.getTags() != null) {
+                    for (String tag : taskDTO.getTags()) {
+                        newTodo.addLabel(tag);
+                    }
+                }
+
+                realTodosToSave.add(newTodo);
             }
+            
+            todosRepository.saveAll(realTodosToSave);
+            log.info("Successfully persisted {} real AI tasks to the database for board {}", realTodosToSave.size(), board.getId());
+            
         } catch (Exception e) {
             log.error("Failed to create todos from tasks", e);
         }
@@ -656,6 +872,7 @@ public class EnterpriseAIService {
         task.setPrerequisites(dto.getPrerequisites() != null ? dto.getPrerequisites() : new ArrayList<>());
         task.setResourceLinks(dto.getResourceLinks());
         task.setDeliverables(dto.getDeliverables());
+        task.setAssignedToId(dto.getAssignedToId());
         task.setParentTaskId(dto.getParentTaskId());
         task.setOrderIndex(dto.getOrderIndex() != null ? dto.getOrderIndex() : 0);
     }
@@ -717,6 +934,7 @@ public class EnterpriseAIService {
         dto.setPrerequisites(task.getPrerequisites());
         dto.setResourceLinks(task.getResourceLinks());
         dto.setDeliverables(task.getDeliverables());
+        dto.setAssignedToId(task.getAssignedToId());
         dto.setParentTaskId(task.getParentTaskId());
         dto.setOrderIndex(task.getOrderIndex());
         dto.setAccepted(task.getAccepted());
@@ -727,7 +945,11 @@ public class EnterpriseAIService {
 
     public EnterpriseAIResponseDTO getContext(String sessionId, User user) {
         AIContext context = contextRepository.findBySessionIdAndUser(sessionId, user)
-                .orElseThrow(() -> new RuntimeException("Context not found"));
+                .orElseGet(() -> {
+                    EnterpriseAIRequestDTO req = new EnterpriseAIRequestDTO();
+                    req.setSessionId(sessionId);
+                    return createNewContext(req, user);
+                });
 
         EnterpriseAIResponseDTO response = new EnterpriseAIResponseDTO();
         response.setSessionId(sessionId);
@@ -753,5 +975,333 @@ public class EnterpriseAIService {
 
     public void clearContext(String sessionId, User user) {
         contextRepository.deleteBySessionIdAndUser(sessionId, user);
+    }
+
+    public EnterpriseAIResponseDTO handleAcceptTasks(EnterpriseAIRequestDTO request, User user) {
+        log.info("Accepting AI tasks for user: {}", user.getEmail());
+        EnterpriseAIResponseDTO response = new EnterpriseAIResponseDTO();
+        response.setAction("ACCEPT_TASKS");
+        response.setSuccess(true);
+        
+        try {
+            List<EnhancedAITask> acceptedTasks = new ArrayList<>();
+            
+            // If specific IDs provided
+            if (request.getTaskIds() != null && !request.getTaskIds().isEmpty()) {
+                acceptedTasks = taskRepository.findAllByIdInWithPlan(request.getTaskIds());
+            } else if (request.getTasks() != null && !request.getTasks().isEmpty()) {
+                // If the user modified tasks and sent them back to be saved
+                for (EnhancedAITaskDTO dto : request.getTasks()) {
+                    EnhancedAITask task;
+                    if (dto.getId() != null) {
+                        task = taskRepository.findById(dto.getId()).orElse(new EnhancedAITask());
+                    } else {
+                        task = new EnhancedAITask();
+                    }
+                    updateTaskFromDTO(task, dto);
+                    acceptedTasks.add(taskRepository.save(task));
+                }
+            }
+
+            int createdCount = 0;
+            for (EnhancedAITask aiTask : acceptedTasks) {
+                if (aiTask.getCreatedTodo() == null) {
+                    Todos todo = new Todos();
+                    todo.setItem(aiTask.getTitle());
+                    todo.setDescription(aiTask.getDescription());
+                    todo.setStatus(Todos.Status.PENDING);
+                    todo.setPriority(Todos.Priority.valueOf(aiTask.getPriority() != null ? aiTask.getPriority() : "NORMAL"));
+                    todo.setDueDate(aiTask.getSuggestedDueDate());
+                    if (aiTask.getOrderIndex() != null) {
+                        todo.setOrderIndex(aiTask.getOrderIndex());
+                    }
+                    
+                    // Assignment logic
+                    if (aiTask.getAssignedToId() != null && !aiTask.getAssignedToId().isEmpty()) {
+                        try {
+                            Long assignedId = Long.parseLong(aiTask.getAssignedToId());
+                            userRepository.findById(assignedId).ifPresent(todo::setAssignedTo);
+                        } catch (Exception e) {
+                            todo.setAssignedTo(user);
+                        }
+                    } else {
+                        todo.setAssignedTo(user);
+                    }
+                    
+                    todo.setCreatedBy(user);
+                    todo.setIsAiGenerated(true);
+                    
+                    // If workspace provided
+                    if (request.getWorkspaceId() != null) {
+                        workspaceRepository.findById(request.getWorkspaceId()).ifPresent(todo::setWorkspace);
+                    } else if (aiTask.getPlan() != null && aiTask.getPlan().getWorkspace() != null) {
+                        todo.setWorkspace(aiTask.getPlan().getWorkspace());
+                    }
+
+                    Todos savedTodo = todosRepository.save(todo);
+                    aiTask.setCreatedTodo(savedTodo);
+                    aiTask.setAccepted(true);
+                    taskRepository.save(aiTask);
+                    createdCount++;
+                }
+            }
+
+            response.setMessage("Successfully created " + createdCount + " integration tasks");
+            response.setData(Map.of("createdCount", createdCount));
+            
+        } catch (Exception e) {
+            log.error("Failed to accept tasks", e);
+            response.setSuccess(false);
+            response.setMessage("Failed to create tasks: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    private EnterpriseAIResponseDTO handleAssignTask(EnterpriseAIRequestDTO request, User user) {
+        EnterpriseAIResponseDTO response = new EnterpriseAIResponseDTO();
+        response.setAction("ASSIGN_TASK");
+        response.setSuccess(true);
+        
+        try {
+            Long taskId = Long.parseLong(request.getContext().get("taskId").toString());
+            Long userId = Long.parseLong(request.getContext().get("assigneeId").toString());
+            
+            todosRepository.findById(taskId).ifPresent(todo -> {
+                userRepository.findById(userId).ifPresent(assignee -> {
+                    todo.setAssignedTo(assignee);
+                    todosRepository.save(todo);
+                    response.setMessage("Task assigned to " + assignee.getName());
+                });
+            });
+        } catch (Exception e) {
+            response.setSuccess(false);
+            response.setMessage("Assignment failed: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    @Transactional
+    public EnterpriseAIResponseDTO createContext(Map<String, Object> requestData, User user) {
+        EnterpriseAIRequestDTO request = new EnterpriseAIRequestDTO();
+        if (requestData.containsKey("learningStyle")) {
+            request.setLearningStyle(requestData.get("learningStyle").toString());
+        }
+        if (requestData.containsKey("attentionSpan")) {
+            request.setAttentionSpan(Integer.parseInt(requestData.get("attentionSpan").toString()));
+        }
+
+        AIContext context = createNewContext(request, user);
+        
+        EnterpriseAIResponseDTO response = new EnterpriseAIResponseDTO();
+        response.setSessionId(context.getSessionId());
+        response.setSuccess(true);
+        response.setAction("CREATE_CONTEXT");
+        
+        Map<String, Object> insights = new HashMap<>();
+        insights.put("learningStyle", context.getLearningStyle());
+        insights.put("attentionSpan", context.getAttentionSpan());
+        response.setInsights(insights);
+        
+        return response;
+    }
+
+    @Transactional
+    public void updateContext(String sessionId, Map<String, Object> updates, User user) {
+        AIContext context = contextRepository.findBySessionIdAndUser(sessionId, user)
+                .orElseThrow(() -> new RuntimeException("Context not found"));
+
+        if (updates.containsKey("learningStyle")) {
+            context.setLearningStyle(updates.get("learningStyle").toString());
+        }
+        if (updates.containsKey("attentionSpan")) {
+            context.setAttentionSpan(Integer.parseInt(updates.get("attentionSpan").toString()));
+        }
+        if (updates.containsKey("userPreferences")) {
+            try {
+                context.setUserPreferences(objectMapper.writeValueAsString(updates.get("userPreferences")));
+            } catch (Exception e) {
+                log.error("Failed to update user preferences", e);
+            }
+        }
+
+        contextRepository.save(context);
+    }
+
+    @Transactional
+    public void addMessageToContext(String sessionId, String role, String content, Map<String, Object> metadata, User user) {
+        AIContext context = contextRepository.findBySessionIdAndUser(sessionId, user)
+                .orElseThrow(() -> new RuntimeException("Context not found"));
+
+        AIContextMessage message = new AIContextMessage();
+        message.setContext(context);
+        message.setRole(role);
+        message.setContent(content);
+        try {
+            message.setMetadata(objectMapper.writeValueAsString(metadata));
+        } catch (Exception e) {
+            log.error("Failed to save message metadata", e);
+        }
+
+        context.getMessageHistory().add(message);
+        contextRepository.save(context);
+    }
+
+    public List<Map<String, Object>> getContextMessages(String sessionId, User user) {
+        Optional<AIContext> contextOpt = contextRepository.findBySessionIdAndUser(sessionId, user);
+        if (contextOpt.isEmpty()) {
+            return new ArrayList<>(); // Return empty list instead of throwing 500 error for non-existent session
+        }
+        
+        AIContext context = contextOpt.get();
+        if (context.getMessageHistory() == null) {
+            return new ArrayList<>();
+        }
+
+        return context.getMessageHistory().stream().map(m -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("role", m.getRole());
+            map.put("content", m.getContent());
+            map.put("timestamp", m.getTimestamp());
+            try {
+                if (m.getMetadata() != null) {
+                    map.put("metadata", objectMapper.readValue(m.getMetadata(), Map.class));
+                }
+            } catch (Exception e) {
+                log.error("Failed to parse message metadata", e);
+            }
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> parseAndExecuteActions(String aiResponse, User user, Long workspaceId) {
+        List<Map<String, Object>> executed = new ArrayList<>();
+        // Regex for ACTION: NAME(params)
+        Pattern pattern = Pattern.compile("ACTION:\\s*([A-Z_]+)\\(([^)]*)\\)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(aiResponse);
+
+        while (matcher.find()) {
+            String actionName = matcher.group(1).toUpperCase();
+            String paramsStr = matcher.group(2);
+            String[] params = paramsStr.split(",\\s*");
+
+            try {
+                Map<String, Object> result = null;
+                switch (actionName) {
+                    case "ASSIGN_TASK":
+                        if (params.length >= 2) result = executeAssignTask(Long.parseLong(params[0].trim()), Long.parseLong(params[1].trim()), user);
+                        break;
+                    case "CREATE_PROJECT":
+                        if (params.length >= 1) result = executeCreateProject(params[0].trim().replace("'", ""), workspaceId, user);
+                        break;
+                    case "CREATE_GOAL":
+                        if (params.length >= 4) result = executeCreateGoal(params, workspaceId, user);
+                        break;
+                    case "SET_REMINDER":
+                        if (params.length >= 3) result = executeSetReminder(params, user);
+                        break;
+                    case "SCHEDULE_TIME_BLOCK":
+                        if (params.length >= 3) result = executeScheduleTimeBlock(params, workspaceId, user);
+                        break;
+                }
+                if (result != null) executed.add(result);
+            } catch (Exception e) {
+                log.error("Failed to execute AI action: {} with params: {}", actionName, paramsStr, e);
+            }
+        }
+        return executed;
+    }
+
+    private Map<String, Object> executeAssignTask(Long taskId, Long assigneeId, User user) {
+        Optional<Todos> todoOpt = todosRepository.findById(taskId);
+        Optional<User> assigneeOpt = userRepository.findById(assigneeId);
+        
+        if (todoOpt.isPresent() && assigneeOpt.isPresent()) {
+            Todos todo = todoOpt.get();
+            User assignee = assigneeOpt.get();
+            todo.setAssignedTo(assignee);
+            todosRepository.save(todo);
+            return Map.of("action", "ASSIGN_TASK", "status", "SUCCESS", "message", "Task assigned to " + assignee.getName());
+        }
+        return Map.of("action", "ASSIGN_TASK", "status", "FAILED");
+    }
+
+    private Map<String, Object> executeCreateProject(String name, Long workspaceId, User user) {
+        if (workspaceId == null) return Map.of("action", "CREATE_PROJECT", "status", "FAILED", "reason", "No workspace selected");
+        Project project = projectService.createProject(workspaceId, name, "Created via AI Assistant", "#6366f1", user.getEmail());
+        return Map.of("action", "CREATE_PROJECT", "status", "SUCCESS", "projectId", project.getId(), "projectName", project.getName());
+    }
+
+    private Map<String, Object> executeCreateGoal(String[] params, Long workspaceId, User user) {
+        // title, target, unit, type
+        GoalDTO dto = new GoalDTO();
+        dto.setTitle(params[0].trim().replace("'", ""));
+        dto.setTarget(Integer.parseInt(params[1].trim()));
+        dto.setUnit(params[2].trim().replace("'", ""));
+        dto.setType(params[3].trim().toUpperCase().replace("'", ""));
+        dto.setWorkspaceId(workspaceId);
+        dto.setStartDate(LocalDate.now());
+        dto.setEndDate(LocalDate.now().plusMonths(1)); // Default 1 month
+        
+        goalService.createGoal(dto, user);
+        return Map.of("action", "CREATE_GOAL", "status", "SUCCESS", "goalTitle", dto.getTitle());
+    }
+
+    private Map<String, Object> executeSetReminder(String[] params, User user) {
+        // title, todoId, leadTime
+        ReminderDTO dto = new ReminderDTO();
+        dto.setTitle(params[0].trim().replace("'", ""));
+        dto.setTodoId(Long.parseLong(params[1].trim()));
+        int leadTime = Integer.parseInt(params[2].trim());
+        
+        Optional<Todos> todo = todosRepository.findById(dto.getTodoId());
+        if (todo.isPresent() && todo.get().getDueDateTime() != null) {
+            dto.setScheduledFor(todo.get().getDueDateTime().minusMinutes(leadTime));
+            reminderService.scheduleReminder(dto, user);
+            return Map.of("action", "SET_REMINDER", "status", "SUCCESS", "reminderTitle", dto.getTitle());
+        }
+        return Map.of("action", "SET_REMINDER", "status", "FAILED", "reason", "Task or Due Date not found");
+    }
+
+    private Map<String, Object> executeScheduleTimeBlock(String[] params, Long workspaceId, User user) {
+        // title, startTime, endTime (ISO format expected from AI if possible, or relative)
+        TimeBlockDTO dto = new TimeBlockDTO();
+        dto.setTitle(params[0].trim().replace("'", ""));
+        try {
+            dto.setStartTime(LocalDateTime.parse(params[1].trim().replace("'", "")));
+            dto.setEndTime(LocalDateTime.parse(params[2].trim().replace("'", "")));
+        } catch (Exception e) {
+            // Fallback: today at 2pm-3pm if parsing fails
+            dto.setStartTime(LocalDateTime.now().withHour(14).withMinute(0));
+            dto.setEndTime(LocalDateTime.now().withHour(15).withMinute(0));
+        }
+        dto.setWorkspaceId(workspaceId);
+        dto.setColor("#6366f1");
+        
+        timeBlockService.createTimeBlock(dto, user);
+        return Map.of("action", "SCHEDULE_TIME_BLOCK", "status", "SUCCESS", "blockTitle", dto.getTitle());
+    }
+
+    private String truncate(String text, int maxLength) {
+        if (text == null) return null;
+        if (text.length() <= maxLength) return text;
+        return text.substring(0, maxLength - 3) + "...";
+    }
+
+    public Map<String, Object> analyzeWorkload(Long workspaceId, User user) {
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+        
+        List<Todos> activeTasks = todosRepository.findByWorkspaceAndStatusNot(workspace, Todos.Status.COMPLETED);
+        
+        String prompt = promptBuilder.buildWorkloadAnalysisPrompt(activeTasks, user.getName());
+        String aiResponse = openAIClient.sendMessage(prompt);
+        
+        return Map.of(
+            "summary", aiResponse,
+            "taskCount", activeTasks.size(),
+            "timestamp", LocalDateTime.now()
+        );
     }
 }

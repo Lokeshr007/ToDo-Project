@@ -28,7 +28,7 @@ public class SmartTaskController {
         );
     }
 
-    @GetMapping
+    @GetMapping("/board/{boardId}")
     public List<SmartTask> list(
             @PathVariable Long boardId
     ){

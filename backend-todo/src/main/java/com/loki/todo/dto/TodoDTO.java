@@ -30,7 +30,7 @@ public class TodoDTO {
     private LocalDateTime updatedAt;
     private LocalDateTime startedAt;
     private Double estimatedHours;
-    private Integer actualHours;
+    private Double actualHours;
     private Integer storyPoints;
 
     // User/Assignment fields

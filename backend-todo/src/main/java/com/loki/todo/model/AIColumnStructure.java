@@ -15,6 +15,7 @@ public class AIColumnStructure {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 1000)
     private String columnName;
     private String columnType; // TODO, IN_PROGRESS, REVIEW, DONE, CUSTOM
     private String columnColor;

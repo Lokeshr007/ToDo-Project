@@ -23,10 +23,11 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
     @Query("SELECT g FROM Goal g WHERE g.user = :user AND g.endDate >= :date")
     List<Goal> findActiveGoals(@Param("user") User user, @Param("date") LocalDate date);
 
-    // FIXED: Changed from g.completed = false to g.progress < 100
     @Query("SELECT g FROM Goal g WHERE g.user = :user AND g.progress < 100 AND g.endDate < :date")
     List<Goal> findOverdueGoals(@Param("user") User user, @Param("date") LocalDate date);
 
     @Query("SELECT COUNT(g) FROM Goal g WHERE g.user = :user AND g.progress >= 100")
     long countCompletedGoals(@Param("user") User user);
+
+    List<Goal> findByProjectId(Long projectId);
 }

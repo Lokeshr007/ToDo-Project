@@ -1,4 +1,3 @@
-// D:\AllProjects\ToDoProject\backend-todo\src\main\java\com\loki\todo\dto\EnterpriseAIRequestDTO.java
 package com.loki.todo.dto;
 
 import lombok.Data;
@@ -6,6 +5,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -23,4 +23,7 @@ public class EnterpriseAIRequestDTO {
     private Integer attentionSpan;
     private Map<String, Object> userPreferences;
     private Map<String, Object> context;
+    private List<Long> taskIds;
+    private List<EnhancedAITaskDTO> tasks;
+    private Integer durationDays = 60;
 }

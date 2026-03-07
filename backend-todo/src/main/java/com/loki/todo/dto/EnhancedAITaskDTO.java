@@ -14,6 +14,7 @@ public class EnhancedAITaskDTO {
     private Integer dayNumber;
     private Integer weekNumber;
     private String title;
+    private String assignedToId;
     private String description;
     private String priority;
     private Double estimatedHours;

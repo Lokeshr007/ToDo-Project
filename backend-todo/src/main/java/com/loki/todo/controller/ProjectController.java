@@ -1,4 +1,3 @@
-// com/loki/todo/controller/ProjectController.java
 package com.loki.todo.controller;
 
 import com.loki.todo.dto.ProjectDTO;
@@ -70,15 +69,16 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<?> createProject(
-            @RequestBody Map<String, String> body,
+            @RequestBody Map<String, Object> body,
             @RequestParam Long workspaceId,
             Authentication authentication) {
 
         try {
             String email = authentication.getName();
-            String name = body.get("name");
-            String description = body.get("description");
-            String color = body.get("color");
+            String name = (String) body.get("name");
+            String description = (String) body.get("description");
+            String color = (String) body.get("color");
+            List<String> memberEmails = (List<String>) body.get("memberEmails");
 
             log.info("Creating project: {} in workspace: {} by user: {}", name, workspaceId, email);
 
@@ -92,7 +92,8 @@ public class ProjectController {
                     name,
                     description,
                     color,
-                    email
+                    email,
+                    memberEmails
             );
 
             ProjectDTO projectDTO = projectService.convertToDTO(project);
@@ -162,10 +163,34 @@ public class ProjectController {
             ));
         } catch (RuntimeException e) {
             log.error("Failed to delete project", e);
+            String errorMsg = e.toString() + (e.getCause() != null ? " | Cause: " + e.getCause().toString() : "");
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", errorMsg));
+        } catch (Exception e) {
+            log.error("Failed to delete project", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{projectId}/duplicate")
+    public ResponseEntity<?> duplicateProject(
+            @PathVariable Long projectId,
+            Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            log.info("Duplicating project: {} by user: {}", projectId, email);
+
+            Project project = projectService.duplicateProject(projectId, email);
+            ProjectDTO projectDTO = projectService.convertToDTO(project);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(projectDTO);
+        } catch (RuntimeException e) {
+            log.error("Failed to duplicate project", e);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            log.error("Failed to delete project", e);
+            log.error("Failed to duplicate project", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage()));
         }
@@ -189,6 +214,79 @@ public class ProjectController {
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("Failed to fetch project stats", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{projectId}/members/{userId}")
+    public ResponseEntity<?> addMember(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            log.info("Adding member: {} to project: {} by user: {}", userId, projectId, email);
+
+            Project project = projectService.addMemberToProject(projectId, userId, email);
+            ProjectDTO projectDTO = projectService.convertToDTO(project);
+
+            return ResponseEntity.ok(projectDTO);
+        } catch (RuntimeException e) {
+            log.error("Failed to add member to project", e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to add member to project", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{projectId}/members/email")
+    public ResponseEntity<?> addMemberByEmail(
+            @PathVariable Long projectId,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            String memberEmail = body.get("email");
+            log.info("Adding member by email: {} to project: {} by user: {}", memberEmail, projectId, email);
+
+            Project project = projectService.addMemberToProjectByEmail(projectId, memberEmail, email);
+            ProjectDTO projectDTO = projectService.convertToDTO(project);
+
+            return ResponseEntity.ok(projectDTO);
+        } catch (RuntimeException e) {
+            log.error("Failed to add member by email to project", e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to add member by email to project", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{projectId}/members/{userId}")
+    public ResponseEntity<?> removeMember(
+            @PathVariable Long projectId,
+            @PathVariable Long userId,
+            Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            log.info("Removing member: {} from project: {} by user: {}", userId, projectId, email);
+
+            Project project = projectService.removeMemberFromProject(projectId, userId, email);
+            ProjectDTO projectDTO = projectService.convertToDTO(project);
+
+            return ResponseEntity.ok(projectDTO);
+        } catch (RuntimeException e) {
+            log.error("Failed to remove member from project", e);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to remove member from project", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", e.getMessage()));
         }

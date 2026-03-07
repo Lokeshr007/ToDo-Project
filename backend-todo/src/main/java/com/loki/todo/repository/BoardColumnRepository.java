@@ -12,15 +12,15 @@ import java.util.Optional;
 
 @Repository
 public interface BoardColumnRepository extends JpaRepository<BoardColumn, Long> {
-    List<BoardColumn> findByBoardOrderByOrderIndex(Board board);
+    List<BoardColumn> findByBoardAndDeletedAtIsNullOrderByOrderIndex(Board board);
 
-    @Query("SELECT c FROM BoardColumn c LEFT JOIN FETCH c.todos WHERE c.board = :board ORDER BY c.orderIndex ASC")
+    @Query("SELECT c FROM BoardColumn c LEFT JOIN FETCH c.todos WHERE c.board = :board AND c.deletedAt IS NULL ORDER BY c.orderIndex ASC")
     List<BoardColumn> findByBoardWithTodos(@Param("board") Board board);
 
-    boolean existsByBoardAndName(Board board, String name);
+    boolean existsByBoardAndNameAndDeletedAtIsNull(Board board, String name);
 
-    Optional<BoardColumn> findByBoardAndType(Board board, BoardColumn.ColumnType type);
+    Optional<BoardColumn> findByBoardAndTypeAndDeletedAtIsNull(Board board, BoardColumn.ColumnType type);
 
-    @Query("SELECT MAX(c.orderIndex) FROM BoardColumn c WHERE c.board = :board")
+    @Query("SELECT MAX(c.orderIndex) FROM BoardColumn c WHERE c.board = :board AND c.deletedAt IS NULL")
     Optional<Double> findMaxOrderIndex(@Param("board") Board board);
 }

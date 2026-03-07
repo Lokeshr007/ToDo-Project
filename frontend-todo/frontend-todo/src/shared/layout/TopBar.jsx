@@ -5,6 +5,7 @@ import {
   Clock, FolderKanban, Mail, CheckCheck, X
 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthContext";
+import { useWorkspace } from "@/app/providers/WorkspaceContext";
 import { useNavigate, Link } from "react-router-dom";
 import API from "@/services/api";
 import toast from 'react-hot-toast';
@@ -23,7 +24,8 @@ function TopBar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   
-  const { user, logout, currentWorkspace, switchWorkspace } = useAuth();
+  const { user, logout } = useAuth();
+  const { currentWorkspace, switchWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const profileMenuRef = useRef(null);
   const searchRef = useRef(null);
@@ -149,7 +151,7 @@ function TopBar() {
         setSearchQuery('');
         setShowSearchResults(false);
         
-        switchWorkspace(workspace.id);
+        switchWorkspace(workspace);
         toast.success(`Switched to ${workspace.name}`);
         navigate('/app/dashboard');
       }

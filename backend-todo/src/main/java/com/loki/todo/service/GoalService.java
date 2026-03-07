@@ -7,6 +7,7 @@ import com.loki.todo.model.Goal;
 import com.loki.todo.model.User;
 import com.loki.todo.model.Workspace;
 import com.loki.todo.repository.GoalRepository;
+import com.loki.todo.repository.ProjectRepository;
 import com.loki.todo.repository.TodosRepository;
 import com.loki.todo.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class GoalService {
     private final GoalRepository goalRepository;
     private final TodosRepository todosRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final ProjectRepository projectRepository;
 
     @Transactional
     public GoalDTO createGoal(GoalDTO goalDTO, User user) {
@@ -168,6 +170,10 @@ public class GoalService {
         entity.setColor(dto.getColor());
         entity.setReminder(dto.getReminder());
         entity.setReminderTime(dto.getReminderTime());
+        
+        if (dto.getProjectId() != null) {
+            projectRepository.findById(dto.getProjectId()).ifPresent(entity::setProject);
+        }
     }
 
     private GoalDTO mapEntityToDto(Goal entity) {
@@ -190,6 +196,9 @@ public class GoalService {
         dto.setUserId(entity.getUser().getId());
         if (entity.getWorkspace() != null) {
             dto.setWorkspaceId(entity.getWorkspace().getId());
+        }
+        if (entity.getProject() != null) {
+            dto.setProjectId(entity.getProject().getId());
         }
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());

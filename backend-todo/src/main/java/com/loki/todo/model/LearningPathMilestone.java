@@ -10,7 +10,7 @@ import java.util.List;
 @Table(name = "learning_path_milestones")
 @Data
 @NoArgsConstructor
-class LearningPathMilestone {
+public class LearningPathMilestone {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

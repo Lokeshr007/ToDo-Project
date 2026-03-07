@@ -29,7 +29,8 @@ public class ReminderController {
     }
 
     @PostMapping("/{id}/snooze")
-    public ResponseEntity<ReminderDTO> snoozeReminder(@PathVariable Long id, @RequestParam int minutes, @CurrentUser User user) {
+    public ResponseEntity<ReminderDTO> snoozeReminder(@PathVariable Long id, @RequestBody java.util.Map<String, Integer> body, @CurrentUser User user) {
+        int minutes = body.getOrDefault("minutes", 15);
         return ResponseEntity.ok(reminderService.snoozeReminder(id, minutes, user));
     }
 

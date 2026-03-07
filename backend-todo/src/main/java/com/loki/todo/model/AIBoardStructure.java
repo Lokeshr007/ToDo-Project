@@ -17,7 +17,10 @@ public class AIBoardStructure {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 1000)
     private String boardName;
+
+    @Column(columnDefinition = "TEXT")
     private String boardDescription;
     private String boardColor;
     private Integer orderIndex;

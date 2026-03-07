@@ -17,6 +17,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     List<Notification> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
+    List<Notification> findByUserAndReadOrderByCreatedAtDesc(User user, boolean read, Pageable pageable);
+
     List<Notification> findByUserAndReadFalseOrderByCreatedAtDesc(User user);
 
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.user = :user AND n.read = false")
@@ -29,4 +31,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.user = :user AND n.createdAt < :cutoff")
     void deleteOldNotifications(@Param("user") User user, @Param("cutoff") LocalDateTime cutoff);
+
+    List<Notification> findByProjectId(Long projectId);
 }

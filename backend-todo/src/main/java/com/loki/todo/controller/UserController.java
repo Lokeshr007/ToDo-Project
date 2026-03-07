@@ -153,4 +153,10 @@ public class UserController {
         userService.deleteAccount(email);
         return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserDTO>> searchUsers(@RequestParam("q") String query) {
+        List<UserDTO> results = userService.searchUsers(query);
+        return ResponseEntity.ok(results);
+    }
 }

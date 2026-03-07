@@ -19,18 +19,19 @@ public class EnhancedAIPlan {
     private Long id;
 
     private String title;
+    @Column(columnDefinition = "TEXT")
     private String description;
     private Integer durationDays;
     private String sourceFileName;
     private String sourceFileType;
 
-    @Column(length = 20000)
+    @Column(columnDefinition = "TEXT")
     private String rawContent;
 
-    @Column(length = 20000)
+    @Column(columnDefinition = "TEXT")
     private String parsedPlanJson;
 
-    @Column(length = 5000)
+    @Column(columnDefinition = "TEXT")
     private String summary;
 
     private String difficulty; // BEGINNER, INTERMEDIATE, ADVANCED
@@ -51,10 +52,8 @@ public class EnhancedAIPlan {
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EnhancedAITask> generatedTasks = new ArrayList<>();
 
-    // Fix: Remove the mappedBy reference to 'plan' in AIContext since AIContext doesn't have a 'plan' field
-    // Instead, make it a unidirectional relationship or add the field to AIContext
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "plan_id")
+    // Bidirectional mapping since AIContext now has 'currentPlan'
+    @OneToMany(mappedBy = "currentPlan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AIContext> contexts = new ArrayList<>();
 
     @OneToOne(cascade = CascadeType.ALL)

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-public interface TodosRepository extends JpaRepository<Todos, Long> {
+public interface TodosRepository extends JpaRepository<Todos, Long>, JpaSpecificationExecutor<Todos> {
 
     @EntityGraph(attributePaths = {
             "createdBy",
@@ -119,6 +120,10 @@ public interface TodosRepository extends JpaRepository<Todos, Long> {
     })
     List<Todos> findByWorkspaceAndProject(Workspace workspace, Project project);
 
+    List<Todos> findByGoal(Goal goal);
+    
+    List<Todos> findByWorkspaceAndGoal(Workspace workspace, Goal goal);
+
     @Query("SELECT t FROM Todos t WHERE t.workspace = :workspace AND t.dueDate = :date")
     @EntityGraph(attributePaths = {
             "createdBy",
@@ -202,7 +207,7 @@ public interface TodosRepository extends JpaRepository<Todos, Long> {
     List<Todos> findDeletedByWorkspace(@Param("workspace") Workspace workspace);
 
     // Include deleted tasks
-    @Query("SELECT t FROM Todos t WHERE t.id = :id")
+    @Query(value = "SELECT * FROM todos WHERE id = :id", nativeQuery = true)
     Optional<Todos> findByIdIncludeDeleted(@Param("id") Long id);
 
     // Add these methods to your existing TodosRepository.java
@@ -225,6 +230,36 @@ public interface TodosRepository extends JpaRepository<Todos, Long> {
     @Query("SELECT COUNT(t) FROM Todos t WHERE t.board.id = :boardId AND t.deletedAt IS NULL")
     long countByBoardId(@Param("boardId") Long boardId);
 
+    @Query("SELECT COUNT(t) FROM Todos t WHERE t.board.id = :boardId AND t.status = :status AND t.deletedAt IS NULL")
+    long countByBoardIdAndStatus(@Param("boardId") Long boardId, @Param("status") Todos.Status status);
+
+    List<Todos> findByAssignedToAndStatusNot(User assignedTo, Todos.Status status);
+
+
+    @Query("SELECT t FROM Todos t WHERE t.project.id = :projectId AND t.deletedAt IS NULL")
+    List<Todos> findByProjectId(@Param("projectId") Long projectId);
+
     @Query("SELECT t.id as id, t.item as title, t.status as status, t.updatedAt as updatedAt FROM Todos t WHERE t.project.id = :projectId AND t.deletedAt IS NULL ORDER BY t.updatedAt DESC")
     List<Map<String, Object>> findRecentByProjectId(@Param("projectId") Long projectId, Pageable pageable);
+
+    @Query(value = "SELECT * FROM todos WHERE project_id = :projectId", nativeQuery = true)
+    List<Todos> findByProjectIdIncludeDeleted(@Param("projectId") Long projectId);
+
+    List<Todos> findByProjectOrderByDueDateAsc(Project project);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Todos t SET t.status = :status, t.updatedAt = CURRENT_TIMESTAMP WHERE t.id IN :ids")
+    void updateStatusByIds(@Param("ids") List<Long> ids, @Param("status") Todos.Status status);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Todos t SET t.priority = :priority, t.updatedAt = CURRENT_TIMESTAMP WHERE t.id IN :ids")
+    void updatePriorityByIds(@Param("ids") List<Long> ids, @Param("priority") Todos.Priority priority);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Todos t SET t.assignedTo = :user, t.updatedAt = CURRENT_TIMESTAMP WHERE t.id IN :ids")
+    void updateAssigneeByIds(@Param("ids") List<Long> ids, @Param("user") User user);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE ai_project_structures SET created_project_id = NULL WHERE created_project_id = :projectId", nativeQuery = true)
+    void clearAIProjectStructureReferences(@Param("projectId") Long projectId);
 }

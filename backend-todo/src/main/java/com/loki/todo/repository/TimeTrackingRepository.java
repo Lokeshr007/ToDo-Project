@@ -20,6 +20,9 @@ public interface TimeTrackingRepository extends JpaRepository<TimeTracking, Long
     @Query("SELECT t FROM TimeTracking t WHERE t.user = :user AND t.endTime IS NULL")
     Optional<TimeTracking> findActiveTrackingForUser(@Param("user") User user);
 
+    @Query("SELECT t FROM TimeTracking t JOIN FETCH t.todo WHERE t.user = :user AND t.endTime IS NULL")
+    Optional<TimeTracking> findActiveWithTodo(@Param("user") User user);
+
     @Query("SELECT SUM(t.hoursLogged) FROM TimeTracking t WHERE t.user = :user AND t.startTime >= :start")
     Double totalHoursByUserSince(@Param("user") User user, @Param("start") LocalDateTime start);
 
@@ -55,5 +58,8 @@ public interface TimeTrackingRepository extends JpaRepository<TimeTracking, Long
 
     Optional<TimeTracking> findByUserAndEndTimeIsNull(User user);
 
-    void deleteByTodo(Todos todo);
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM TimeTracking t WHERE t.todo = :todo")
+    void deleteByTodo(@Param("todo") Todos todo);
 }

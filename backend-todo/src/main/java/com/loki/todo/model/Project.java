@@ -1,4 +1,3 @@
-// com/loki/todo/model/Project.java
 package com.loki.todo.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -22,9 +21,10 @@ public class Project {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String name;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String color = "#6366f1"; // Default purple color
@@ -38,6 +38,14 @@ public class Project {
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Board> boards = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "project_members",
+        joinColumns = @JoinColumn(name = "project_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private List<User> members = new ArrayList<>();
 
     private LocalDateTime createdAt;
 

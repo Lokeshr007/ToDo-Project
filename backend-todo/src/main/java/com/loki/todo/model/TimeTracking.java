@@ -41,7 +41,8 @@ public class TimeTracking {
     public void stop() {
         this.endTime = LocalDateTime.now();
         if (startTime != null) {
-            this.hoursLogged = java.time.Duration.between(startTime, endTime).toHours() / 60.0;
+            // Convert duration to fractional hours: toMinutes() / 60.0
+            this.hoursLogged = java.time.Duration.between(startTime, endTime).toMinutes() / 60.0;
         }
     }
 

@@ -3,14 +3,18 @@ package com.loki.todo.service;
 import com.loki.todo.dto.*;
 import com.loki.todo.model.*;
 import com.loki.todo.repository.*;
+import com.loki.todo.security.SessionContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -174,7 +178,7 @@ public class UserService {
                 }
             }
 
-            user.setProfilePicture(filePath.toString());
+            user.setProfilePicture(filePath.toString().replace("\\", "/"));
             User updatedUser = userRepo.save(user);
 
             Activity activity = Activity.builder()
@@ -218,7 +222,7 @@ public class UserService {
                 }
             }
 
-            user.setCoverPhoto(filePath.toString());
+            user.setCoverPhoto(filePath.toString().replace("\\", "/"));
             User updatedUser = userRepo.save(user);
 
             Activity activity = Activity.builder()
@@ -303,7 +307,8 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<ActivityDTO> getUserActivity(String email, int limit) {
         User user = getUserByEmail(email);
-        List<Activity> activities = activityRepo.findRecentByUserId(user.getId(), limit);
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("timestamp").descending());
+        List<Activity> activities = activityRepo.findByUserIdOrderByTimestampDesc(user.getId(), pageable);
 
         return activities.stream()
                 .map(this::mapActivityToDTO)
@@ -453,8 +458,21 @@ public class UserService {
         log.info("Account deleted for user: {}", email);
     }
 
+    @Transactional(readOnly = true)
+    public List<UserDTO> searchUsers(String query) {
+        if (query == null || query.trim().length() < 2) {
+            return Collections.emptyList();
+        }
+        return userRepo.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query)
+                .stream()
+                .limit(10)
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
     private boolean isCurrentSession(DeviceSession session) {
-        return false;
+        Long currentSessionId = SessionContext.getSessionId();
+        return currentSessionId != null && currentSessionId.equals(session.getId());
     }
 
     private String generateSecret() {
@@ -546,9 +564,13 @@ public class UserService {
         dto.setDescription(activity.getDescription());
         dto.setTimestamp(activity.getTimestamp());
 
-        String icon = "Activity";
-        String color = "gray";
-        switch (activity.getType()) {
+        String type = activity.getType();
+        if (type == null) type = "UNKNOWN";
+
+        String icon = "";
+        String color = "";
+
+        switch (type) {
             case "PROFILE_UPDATE":
                 icon = "Edit2";
                 color = "blue";
@@ -572,6 +594,10 @@ public class UserService {
             case "2FA_DISABLE":
                 icon = "Lock";
                 color = "purple";
+                break;
+            default:
+                icon = "Activity";
+                color = "gray";
                 break;
         }
         dto.setIcon(icon);

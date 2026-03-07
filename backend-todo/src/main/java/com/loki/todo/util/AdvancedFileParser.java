@@ -78,9 +78,34 @@ public class AdvancedFileParser {
     }
 
     private String extractFromPDF(MultipartFile file) throws Exception {
-        try (PDDocument document = PDDocument.load(file.getInputStream())) {
+        byte[] bytes = file.getBytes();
+        if (bytes.length == 0) {
+            throw new RuntimeException("The uploaded PDF file is empty.");
+        }
+        
+        try (PDDocument document = PDDocument.load(bytes)) {
+            if (document.isEncrypted()) {
+                log.warn("PDF file is encrypted, attempting to decrypt with empty password");
+                try {
+                    document.setAllSecurityToBeRemoved(true);
+                } catch (Exception e) {
+                    throw new RuntimeException("This PDF is password protected and cannot be read. Please provide an unprotected file.");
+                }
+            }
+            
             PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
+            stripper.setSortByPosition(true);
+            String text = stripper.getText(document);
+            
+            if (text == null || text.trim().isEmpty()) {
+                log.warn("PDF text extraction returned empty content - likely an image-based PDF");
+                return "[This PDF appears to be image-based or contains no selectable text. Please provide a text-based PDF or copy the text directly into the chat.]";
+            }
+            
+            return text;
+        } catch (Exception e) {
+            log.error("Error extracting text from PDF", e);
+            throw new RuntimeException("Failed to process PDF: " + e.getMessage());
         }
     }
 
@@ -88,12 +113,21 @@ public class AdvancedFileParser {
         try (XWPFDocument docx = new XWPFDocument(file.getInputStream())) {
             XWPFWordExtractor extractor = new XWPFWordExtractor(docx);
             return extractor.getText();
+        } catch (Exception e) {
+            log.error("Error extracting text from DOCX", e);
+            throw new RuntimeException("Could not read Word (.docx) content: " + e.getMessage());
         }
     }
 
     private String extractFromDoc(MultipartFile file) throws Exception {
-        // For older .doc files, treat as text for now
-        return extractFromText(file);
+        // Now using poi-scratchpad for older .doc files if needed, 
+        // but for now, we'll keep it simple or use text extraction as fallback
+        try {
+            return extractFromText(file);
+        } catch (Exception e) {
+            log.error("Error extracting text from DOC", e);
+            return "[Error reading .doc file. Please convert to .docx or .pdf]";
+        }
     }
 
     private String extractFromText(MultipartFile file) throws Exception {

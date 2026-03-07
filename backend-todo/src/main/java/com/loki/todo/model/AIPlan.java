@@ -24,11 +24,11 @@ public class AIPlan {
 
     private String sourceFileName;
 
-    @Column(length = 5000)
-    private String rawContent;
+    @Column(name = "plan_raw_text", columnDefinition = "TEXT")
+    private String planRawText;
 
-    @Column(length = 5000)
-    private String parsedPlanJson;
+    @Column(name = "parsed_plan_data", columnDefinition = "TEXT")
+    private String parsedPlanData;
 
     private LocalDateTime createdAt;
 

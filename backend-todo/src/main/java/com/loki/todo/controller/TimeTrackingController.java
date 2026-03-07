@@ -1,6 +1,7 @@
 // com/loki/todo/controller/TimeTrackingController.java
 package com.loki.todo.controller;
 
+import com.loki.todo.dto.TimeTrackingResponse;
 import com.loki.todo.model.TimeTracking;
 import com.loki.todo.service.TimeTrackingService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,10 @@ public class TimeTrackingController {
         try {
             String userEmail = authentication.getName();
             TimeTracking activeTimer = timeTrackingService.getActiveTimer(userEmail);
-            return ResponseEntity.ok(activeTimer);
+            if (activeTimer != null) {
+                return ResponseEntity.ok(TimeTrackingResponse.fromEntity(activeTimer));
+            }
+            return ResponseEntity.ok(null);
         } catch (RuntimeException e) {
             return ResponseEntity.ok(null);
         } catch (Exception e) {
@@ -36,7 +40,7 @@ public class TimeTrackingController {
         try {
             String userEmail = authentication.getName();
             TimeTracking tracking = timeTrackingService.stopTimeTracking(trackingId, userEmail);
-            return ResponseEntity.ok(tracking);
+            return ResponseEntity.ok(TimeTrackingResponse.fromEntity(tracking));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

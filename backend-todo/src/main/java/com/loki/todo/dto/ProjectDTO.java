@@ -23,8 +23,15 @@ public class ProjectDTO {
     private LocalDateTime createdAt;
     private Long boardCount;
     private Long taskCount;
+    private Long completedTaskCount;
+    private Double completionPercentage;
+    private java.util.Map<String, Long> tasksByStatus;
 
-    public static ProjectDTO fromEntity(Project project, Long boardCount, Long taskCount) {
+    private java.util.List<MemberDTO> members;
+
+    public static ProjectDTO fromEntity(Project project, Long boardCount, Long taskCount, 
+                                       Long completedTaskCount, Double completionPercentage,
+                                       java.util.Map<String, Long> tasksByStatus) {
         ProjectDTO dto = new ProjectDTO();
         dto.setId(project.getId());
         dto.setName(project.getName());
@@ -37,6 +44,23 @@ public class ProjectDTO {
         dto.setCreatedAt(project.getCreatedAt());
         dto.setBoardCount(boardCount);
         dto.setTaskCount(taskCount);
+        dto.setCompletedTaskCount(completedTaskCount);
+        dto.setCompletionPercentage(completionPercentage);
+        dto.setTasksByStatus(tasksByStatus);
+        
+        if (project.getMembers() != null) {
+            dto.setMembers(project.getMembers().stream()
+                .map(u -> {
+                    MemberDTO m = new MemberDTO();
+                    m.setId(u.getId()); // Fix: Pass user ID as the member ID
+                    m.setUserId(u.getId());
+                    m.setName(u.getName());
+                    m.setEmail(u.getEmail());
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList()));
+        }
+        
         return dto;
     }
 

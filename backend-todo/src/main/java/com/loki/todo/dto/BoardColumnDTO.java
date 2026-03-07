@@ -41,6 +41,7 @@ public class BoardColumnDTO {
 
         if (column.getTodos() != null) {
             dto.setTasks(column.getTodos().stream()
+                    .filter(todo -> todo.getDeletedAt() == null)
                     .map(TodoCardDTO::fromEntity)
                     .collect(Collectors.toList()));
         }

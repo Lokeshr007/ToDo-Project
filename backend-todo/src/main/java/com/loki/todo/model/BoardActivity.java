@@ -37,6 +37,7 @@ public class BoardActivity {
     private BoardColumn targetColumn;
 
     @ManyToOne
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Todos todo;
 
     @ManyToOne
