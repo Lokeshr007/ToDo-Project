@@ -2,6 +2,7 @@ package com.loki.todo.workflow;
 
 import com.loki.todo.model.BoardActivity;
 import com.loki.todo.model.Todos;
+import com.loki.todo.model.User;
 import com.loki.todo.repository.BoardActivityRepository;
 import com.loki.todo.repository.TodosRepository;
 import com.loki.todo.service.NotificationService;
@@ -18,14 +19,17 @@ public class WorkflowEngine {
     private final TodosRepository todoRepo;
     private final BoardActivityRepository activityRepo;
     private final NotificationService notificationService;
+    private final RealtimeNotificationService realtimeService;
 
     public WorkflowEngine(
             TodosRepository todoRepo,
             BoardActivityRepository activityRepo,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            RealtimeNotificationService realtimeService) {
         this.todoRepo = todoRepo;
         this.activityRepo = activityRepo;
         this.notificationService = notificationService;
+        this.realtimeService = realtimeService;
     }
 
     @Async
@@ -59,8 +63,12 @@ public class WorkflowEngine {
         Todos todo = (Todos) event.getSource();
         log.info("Task created: {}", todo.getItem());
 
-        if (todo.getAssignedTo() != null) {
-            notificationService.sendTaskAssignedNotification(todo);
+        if (todo.getAssignees() != null) {
+            for (User assignee : todo.getAssignees()) {
+                if (todo.getCreatedBy() != null && !assignee.getId().equals(todo.getCreatedBy().getId())) {
+                    notificationService.sendTaskAssignedNotification(todo, assignee);
+                }
+            }
         }
     }
 
@@ -73,11 +81,16 @@ public class WorkflowEngine {
 
     private void handleTodoAssigned(WorkflowEvent event) {
         Todos todo = (Todos) event.getSource();
-        log.info("Task assigned: {} to {}", todo.getItem(),
-                todo.getAssignedTo() != null ? todo.getAssignedTo().getName() : "nobody");
+        User newlyAssigned = (User) event.getNewValue();
 
-        if (todo.getAssignedTo() != null) {
-            notificationService.sendTaskAssignedNotification(todo);
+        log.info("Task assigned: {} to {}", todo.getItem(),
+                newlyAssigned != null ? newlyAssigned.getName() :
+                (todo.getAssignedTo() != null ? todo.getAssignedTo().getName() : "nobody"));
+
+        if (newlyAssigned != null) {
+            notificationService.sendTaskAssignedNotification(todo, newlyAssigned);
+        } else if (todo.getAssignedTo() != null) {
+            notificationService.sendTaskAssignedNotification(todo, todo.getAssignedTo());
         }
     }
 
@@ -89,5 +102,14 @@ public class WorkflowEngine {
     private void handleTaskMoved(WorkflowEvent event) {
         Todos todo = (Todos) event.getSource();
         log.info("Task moved: {}", todo.getItem());
+
+        // Broadcast move to all project members over WebSocket
+        if (todo.getProject() != null) {
+            realtimeService.sendProjectUpdate(
+                    todo.getProject().getId(),
+                    "TASK_MOVED",
+                    todo.getId()
+            );
+        }
     }
 }
