@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { reminderApi } from '../api/reminderApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useReminders = () => {
   const [reminders, setReminders] = useState([]);
@@ -40,10 +40,10 @@ export const useReminders = () => {
     try {
       const newReminder = await reminderApi.scheduleReminder(reminderData);
       setReminders(prev => [...prev, newReminder]);
-      toast.success('Reminder scheduled');
+      taskToast.success('Reminder scheduled');
       return newReminder;
     } catch (err) {
-      toast.error('Failed to schedule reminder');
+      taskToast.error('Failed to schedule reminder');
       throw err;
     }
   };
@@ -54,9 +54,9 @@ export const useReminders = () => {
       setReminders(prev => prev.map(r => 
         r.id === id ? { ...r, snoozed: true } : r
       ));
-      toast.success(`Snoozed for ${minutes} minutes`);
+      taskToast.success(`Snoozed for ${minutes} minutes`);
     } catch (err) {
-      toast.error('Failed to snooze reminder');
+      taskToast.error('Failed to snooze reminder');
       throw err;
     }
   };
@@ -65,9 +65,9 @@ export const useReminders = () => {
     try {
       await reminderApi.completeReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-      toast.success('Reminder completed');
+      taskToast.success('Reminder completed');
     } catch (err) {
-      toast.error('Failed to complete reminder');
+      taskToast.error('Failed to complete reminder');
       throw err;
     }
   };
@@ -76,9 +76,9 @@ export const useReminders = () => {
     try {
       await reminderApi.deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-      toast.success('Reminder deleted');
+      taskToast.success('Reminder deleted');
     } catch (err) {
-      toast.error('Failed to delete reminder');
+      taskToast.error('Failed to delete reminder');
       throw err;
     }
   };
@@ -87,9 +87,9 @@ export const useReminders = () => {
     try {
       await reminderApi.setReminderPreferences(newPreferences);
       setPreferences(newPreferences);
-      toast.success('Preferences updated');
+      taskToast.success('Preferences updated');
     } catch (err) {
-      toast.error('Failed to update preferences');
+      taskToast.error('Failed to update preferences');
       throw err;
     }
   };

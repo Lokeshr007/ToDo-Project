@@ -3,7 +3,7 @@ import { Target, Plus } from 'lucide-react';
 import { format, addDays, subDays, isBefore, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { goalApi } from '../../api/goalApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import GoalStats from './GoalStats';
 import GoalItem from './GoalItem';
@@ -44,7 +44,7 @@ const GoalTracker = () => {
       setGoals(data);
     } catch (error) {
       console.error('Failed to fetch goals:', error);
-      toast.error('Failed to load goals');
+      taskToast.error('Failed to load goals');
     }
   }, []);
 
@@ -180,7 +180,7 @@ const GoalTracker = () => {
 
   const handleSave = async () => {
     if (!formData.title.trim() || !formData.target) {
-      toast.error('Please fill in all required fields');
+      taskToast.error('Please fill in all required fields');
       return;
     }
 
@@ -188,7 +188,7 @@ const GoalTracker = () => {
       if (editingGoal) {
         const response = await goalApi.updateGoal(editingGoal.id, formData);
         setGoals(prev => prev.map(g => g.id === editingGoal.id ? response : g));
-        toast.success('Goal updated successfully');
+        taskToast.success('Goal updated successfully');
       } else {
         const goalData = {
           ...formData,
@@ -199,14 +199,14 @@ const GoalTracker = () => {
         };
         const response = await goalApi.createGoal(goalData);
         setGoals(prev => [...prev, response]);
-        toast.success('Goal created successfully');
+        taskToast.success('Goal created successfully');
       }
       setShowCreateModal(false);
       setEditingGoal(null);
       resetForm();
     } catch (error) {
       console.error('Failed to save goal:', error);
-      toast.error('Failed to save goal');
+      taskToast.error('Failed to save goal');
     }
   };
 
@@ -215,10 +215,10 @@ const GoalTracker = () => {
     try {
       await goalApi.deleteGoal(id);
       setGoals(prev => prev.filter(g => g.id !== id));
-      toast.success('Goal deleted');
+      taskToast.success('Goal deleted');
     } catch (error) {
       console.error('Failed to delete goal:', error);
-      toast.error('Failed to delete goal');
+      taskToast.error('Failed to delete goal');
     }
   };
 

@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import API from '@/services/api';
 import { useAuth } from './AuthContext';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const WorkspaceContext = createContext();
 
@@ -87,7 +87,7 @@ export const WorkspaceProvider = ({ children }) => {
       
       // Don't show toast for 401 (unauthorized) as it's expected when not logged in
       if (err.response?.status !== 401) {
-        toast.error('Failed to load workspaces');
+        taskToast.error('Failed to load workspaces');
       }
     } finally {
       setLoading(false);
@@ -114,12 +114,12 @@ export const WorkspaceProvider = ({ children }) => {
       setWorkspaces(prev => [...prev, newWorkspace]);
       switchWorkspace(newWorkspace);
       
-      toast.success('Workspace created successfully');
+      taskToast.success('Workspace created successfully');
       return newWorkspace;
       
     } catch (err) {
       console.error('Failed to create workspace:', err);
-      toast.error(err.response?.data?.message || 'Failed to create workspace');
+      taskToast.error(err.response?.data?.message || 'Failed to create workspace');
       throw err;
     }
   };

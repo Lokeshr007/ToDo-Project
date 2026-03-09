@@ -22,7 +22,7 @@ import { format, addDays, subDays, parseISO, isSameDay } from 'date-fns';
 import { useAuth } from '@/app/providers/AuthContext';
 import { timeBlockApi } from '../api/timeBlockApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
   const [blocks, setBlocks] = useState([]);
@@ -80,7 +80,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       setBlocks(data);
     } catch (error) {
       console.error('Failed to fetch time blocks:', error);
-      toast.error('Failed to load schedule');
+      taskToast.error('Failed to load schedule');
     }
   };
 
@@ -123,7 +123,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
 
   const createTimeBlock = async () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a block title');
+      taskToast.error('Please enter a block title');
       return;
     }
 
@@ -132,7 +132,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       const endDateTime = `${format(currentDate, 'yyyy-MM-dd')}T${formData.endTime}:00`;
 
       if (new Date(endDateTime) <= new Date(startDateTime)) {
-        toast.error('End time must be after start time');
+        taskToast.error('End time must be after start time');
         return;
       }
 
@@ -147,15 +147,15 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       setBlocks(prev => [...prev, response]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Time block created successfully');
+      taskToast.success('Time block created successfully');
 
       // If linked to a todo, update todo
       if (formData.todoId) {
-        toast.success('Task linked to time block');
+        taskToast.success('Task linked to time block');
       }
     } catch (error) {
       console.error('Failed to create time block:', error);
-      toast.error('Failed to create time block');
+      taskToast.error('Failed to create time block');
     }
   };
 
@@ -177,10 +177,10 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       setEditingBlock(null);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Time block updated successfully');
+      taskToast.success('Time block updated successfully');
     } catch (error) {
       console.error('Failed to update time block:', error);
-      toast.error('Failed to update time block');
+      taskToast.error('Failed to update time block');
     }
   };
 
@@ -190,10 +190,10 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
     try {
       await timeBlockApi.deleteTimeBlock(id);
       setBlocks(prev => prev.filter(b => b.id !== id));
-      toast.success('Time block deleted');
+      taskToast.success('Time block deleted');
     } catch (error) {
       console.error('Failed to delete time block:', error);
-      toast.error('Failed to delete time block');
+      taskToast.error('Failed to delete time block');
     }
   };
 
@@ -208,7 +208,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       setBlocks(prev => prev.map(b => b.id === block.id ? updated : b));
       
       if (!block.completed) {
-        toast.success('Great job! Block completed 🎉');
+        taskToast.success('Great job! Block completed 🎉');
         
         // If linked to todo, check if it should be auto-completed
         if (block.todoId) {
@@ -244,7 +244,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
     });
 
     setDraggedBlock(null);
-    toast.success('Time block rescheduled');
+    taskToast.success('Time block rescheduled');
   };
 
   const resetForm = () => {

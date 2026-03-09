@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/providers/AuthContext";
-import toast from 'react-hot-toast';
+import { taskToast } from "@/shared/components/QuantumToaster";
 
 function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -54,7 +54,7 @@ function Sidebar() {
       await logout();
     } catch (error) {
       console.error("Logout failed:", error);
-      toast.error('Failed to logout');
+      taskToast.error('Failed to logout');
     }
   };
 
@@ -62,21 +62,21 @@ function Sidebar() {
     setAiDropdownOpen(!aiDropdownOpen);
   };
 
-  const linkStyle = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+    const linkStyle = ({ isActive }) =>
+    `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
       collapsed ? 'justify-center' : ''
     } ${
       isActive
-        ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30"
+        ? "bg-purple-600 text-white"
         : "text-gray-400 hover:text-white hover:bg-gray-800"
     }`;
 
-  const dropdownLinkStyle = ({ isActive }) =>
+    const dropdownLinkStyle = ({ isActive }) =>
     `flex items-center gap-3 px-4 py-2 rounded-lg transition-all text-sm ${
       collapsed ? 'justify-center' : 'pl-10'
     } ${
       isActive
-        ? "bg-gradient-to-r from-purple-600/50 to-indigo-600/50 text-white"
+        ? "bg-purple-600/20 text-purple-400"
         : "text-gray-400 hover:text-white hover:bg-gray-800"
     }`;
 
@@ -102,28 +102,26 @@ function Sidebar() {
 
   return (
     <div 
-      className={`relative ${collapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-gray-900 to-gray-950 border-r border-gray-800 p-6 transition-all duration-300 flex flex-col h-screen sticky top-0 shadow-2xl`}
+      className={`relative ${collapsed ? 'w-20' : 'w-64'} bg-slate-900 border-r border-slate-800 p-6 transition-all duration-300 flex flex-col h-screen sticky top-0 shadow-xl`}
     >
-      {/* Toggle Button */}
+      {/* Styled Toggle Button */}
       <button
         onClick={handleToggle}
-        className="absolute -right-3 top-20 bg-gray-800 border border-gray-700 rounded-full p-1.5 hover:bg-gray-700 transition-colors z-10 shadow-lg"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className="absolute -right-3 top-8 w-6 h-6 bg-purple-600 dark:bg-purple-500 rounded-full border-2 border-slate-900 dark:border-slate-800 text-white flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all z-50 shadow-lg"
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        {collapsed ? (
-          <ChevronRight size={14} className="text-gray-300" />
-        ) : (
-          <ChevronLeft size={14} className="text-gray-300" />
-        )}
+        <div className={`flex items-center justify-center transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`}>
+          <ChevronLeft size={14} strokeWidth={3} />
+        </div>
       </button>
 
       {/* Logo */}
       <div className="mb-10">
-        <h1 className={`text-2xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent transition-all ${collapsed ? 'text-center text-xl' : ''}`}>
+        <h1 className={`text-2xl font-black text-white transition-all tracking-tight ${collapsed ? 'text-center text-xl' : ''}`}>
           {collapsed ? 'TF' : 'TaskFlow'}
         </h1>
         {!collapsed && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
             {currentWorkspace?.name || 'Workspace Manager'}
           </p>
         )}
@@ -146,28 +144,25 @@ function Sidebar() {
           {!collapsed && "Tasks"}
         </NavLink>
 
-        <NavLink to="/app/time-capsule" className={linkStyle}>
-          <Clock size={18} />
-          {!collapsed && "Time Capsule"}
-        </NavLink>
 
-        <NavLink to="/app/workspace" className={linkStyle}>
+
+        <NavLink to="/app/workspaces" className={linkStyle}>
           <Users size={18} />
-          {!collapsed && "Workspace"}
+          {!collapsed && "Workspaces"}
         </NavLink>
 
         {/* AI Assistant Dropdown */}
         <div className="space-y-1">
           <button
             onClick={toggleAiDropdown}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-gray-400 hover:text-white hover:bg-gray-800 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-gray-400 hover:text-white hover:bg-gray-800 ${
               collapsed ? 'justify-center' : ''
             }`}
           >
-            <Brain size={18} className="text-purple-400" />
+            <Sparkles size={18} className="text-purple-400" />
             {!collapsed && (
               <>
-                <span className="flex-1 text-left">AI Assistant</span>
+                <span className="flex-1 text-left">AI Tools</span>
                 {aiDropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </>
             )}
@@ -175,31 +170,45 @@ function Sidebar() {
 
           {aiDropdownOpen && !collapsed && (
             <div className="space-y-1 mt-1">
-              <NavLink to="/app/ai-assistant" className={dropdownLinkStyle}>
+              <NavLink to="/app/ai/assistant" className={dropdownLinkStyle}>
                 <Sparkles size={16} />
                 Basic Assistant
               </NavLink>
               <NavLink to="/app/ai/enterprise" className={dropdownLinkStyle}>
                 <Zap size={16} />
-                Enterprise AI
+                Advanced AI
               </NavLink>
               <NavLink to="/app/ai/learning-paths" className={dropdownLinkStyle}>
-                <Brain size={16} />
+                <ClipboardList size={16} />
                 Learning Paths
+              </NavLink>
+              <NavLink to="/app/ai/project-structure" className={dropdownLinkStyle}>
+                <FolderKanban size={16} />
+                Project Structure
+              </NavLink>
+              <NavLink to="/app/ai/workload" className={dropdownLinkStyle}>
+                <BarChart size={16} />
+                Workload Stats
               </NavLink>
             </div>
           )}
 
           {collapsed && aiDropdownOpen && (
             <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 bg-gray-800 rounded-lg p-2 shadow-xl z-50 min-w-48">
-              <NavLink to="/app/ai-assistant" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+              <NavLink to="/app/ai/assistant" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                 Basic Assistant
               </NavLink>
               <NavLink to="/app/ai/enterprise" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
-                Enterprise AI
+                Advanced AI
               </NavLink>
               <NavLink to="/app/ai/learning-paths" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
                 Learning Paths
+              </NavLink>
+              <NavLink to="/app/ai/project-structure" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                Project Structure
+              </NavLink>
+              <NavLink to="/app/ai/workload" className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+                Workload Stats
               </NavLink>
             </div>
           )}

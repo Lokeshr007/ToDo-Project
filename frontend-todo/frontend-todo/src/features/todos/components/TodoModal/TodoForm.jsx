@@ -1,6 +1,7 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
 import LabelsInput from './LabelsInput';
+import MemberSearch from '@/shared/components/MemberSearch';
 import { getTodayDate } from '../../utils/dateHelpers';
 
 const TodoForm = ({ 
@@ -105,20 +106,12 @@ const TodoForm = ({
               </select>
             </div>
 
-            {/* Assignee - Note: Backend expects 'assignedToId' */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Assignee</label>
-              <select
-                value={formData.assignedToId}
-                onChange={(e) => handleChange('assignedToId', e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Unassigned</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>{user.name || user.email}</option>
-                ))}
-              </select>
-            </div>
+            {/* Assignee - Now with Search by Email */}
+            <MemberSearch 
+              selectedUserId={formData.assignedToId}
+              onSelect={(userId) => handleChange('assignedToId', userId)}
+              users={users}
+            />
 
             {/* Story Points */}
             <div>

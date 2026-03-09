@@ -33,7 +33,7 @@ function Workspaces() {
 
   const handleCreateWorkspace = async () => {
     if (!newWorkspaceName.trim()) {
-      toast.error("Workspace name is required");
+      taskToast.error("Workspace name is required");
       return;
     }
 
@@ -43,10 +43,10 @@ function Workspaces() {
       setShowCreateModal(false);
       setNewWorkspaceName("");
       setNewWorkspaceDesc("");
-      toast.success("Workspace created successfully");
+      taskToast.success("Workspace created successfully");
     } catch (error) {
       console.error("Failed to create workspace:", error);
-      toast.error("Failed to create workspace");
+      taskToast.error("Failed to create workspace");
     } finally {
       setLoading(false);
     }
@@ -60,9 +60,9 @@ function Workspaces() {
     try {
       await API.delete(`/workspaces/${id}`);
       refreshWorkspaces();
-      toast.success("Workspace deleted");
+      taskToast.success("Workspace deleted");
     } catch (error) {
-      toast.error("Failed to delete workspace");
+      taskToast.error("Failed to delete workspace");
     }
   };
 

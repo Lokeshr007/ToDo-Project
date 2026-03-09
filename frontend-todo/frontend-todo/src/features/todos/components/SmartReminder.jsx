@@ -25,7 +25,7 @@ import { format, addMinutes, isBefore, isAfter, differenceInMinutes } from 'date
 import { useAuth } from '@/app/providers/AuthContext';
 import { reminderApi } from '../api/reminderApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const SmartReminder = () => {
   const [reminders, setReminders] = useState([]);
@@ -156,7 +156,7 @@ const SmartReminder = () => {
     }
 
     // Show toast
-    toast.custom((t) => (
+    taskToast.custom((t) => (
       <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-purple-500/30 max-w-md">
         <div className="flex items-start gap-3">
           <BellRing className="text-purple-400 animate-pulse" size={20} />
@@ -210,7 +210,7 @@ const SmartReminder = () => {
           setReminders(prev => prev.map(r => 
             r.id === id ? { ...r, completed: true } : r
           ));
-          toast.success('Reminder completed');
+          taskToast.success('Reminder completed');
           break;
 
         case 'snooze':
@@ -219,21 +219,21 @@ const SmartReminder = () => {
           setReminders(prev => prev.map(r => 
             r.id === id ? { ...r, scheduledFor: snoozedTime.toISOString(), snoozed: true } : r
           ));
-          toast.success(`Reminder snoozed for ${value} minutes`);
+          taskToast.success(`Reminder snoozed for ${value} minutes`);
           break;
       }
 
       setActiveReminder(null);
-      toast.dismiss(); // Close toast
+      taskToast.dismiss(); // Close toast
     } catch (error) {
       console.error('Failed to handle reminder:', error);
-      toast.error('Failed to process reminder');
+      taskToast.error('Failed to process reminder');
     }
   };
 
   const createReminder = async () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a reminder title');
+      taskToast.error('Please enter a reminder title');
       return;
     }
 
@@ -243,7 +243,7 @@ const SmartReminder = () => {
       if (formData.reminderType === 'before' && formData.todoId) {
         const todo = todos.find(t => t.id === parseInt(formData.todoId));
         if (!todo || !todo.dueDate) {
-          toast.error('Selected task has no due date');
+          taskToast.error('Selected task has no due date');
           return;
         }
         scheduledFor = addMinutes(new Date(todo.dueDate), -formData.leadTime);
@@ -252,7 +252,7 @@ const SmartReminder = () => {
       }
 
       if (scheduledFor && isBefore(scheduledFor, new Date())) {
-        toast.error('Reminder time must be in the future');
+        taskToast.error('Reminder time must be in the future');
         return;
       }
 
@@ -267,7 +267,7 @@ const SmartReminder = () => {
       setReminders(prev => [...prev, response]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Reminder scheduled successfully');
+      taskToast.success('Reminder scheduled successfully');
 
       // Schedule intelligent follow-up if enabled
       if (formData.followUp && formData.todoId) {
@@ -275,7 +275,7 @@ const SmartReminder = () => {
       }
     } catch (error) {
       console.error('Failed to create reminder:', error);
-      toast.error('Failed to create reminder');
+      taskToast.error('Failed to create reminder');
     }
   };
 
@@ -291,7 +291,7 @@ const SmartReminder = () => {
         
         if (hoursSinceReminder >= 1 && hoursSinceReminder < 2) {
           // Send first follow-up
-          toast.custom((t) => (
+          taskToast.custom((t) => (
             <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-yellow-500/30">
               <div className="flex items-center gap-3">
                 <AlertCircle className="text-yellow-400" size={20} />
@@ -306,7 +306,7 @@ const SmartReminder = () => {
           ), { duration: 8000 });
         } else if (hoursSinceReminder >= 4) {
           // Send urgent follow-up
-          toast.custom((t) => (
+          taskToast.custom((t) => (
             <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-red-500/30">
               <div className="flex items-center gap-3">
                 <Zap className="text-red-400" size={20} />
@@ -330,10 +330,10 @@ const SmartReminder = () => {
     try {
       await reminderApi.setReminderPreferences(preferences);
       setShowPreferences(false);
-      toast.success('Preferences saved');
+      taskToast.success('Preferences saved');
     } catch (error) {
       console.error('Failed to save preferences:', error);
-      toast.error('Failed to save preferences');
+      taskToast.error('Failed to save preferences');
     }
   };
 
@@ -343,10 +343,10 @@ const SmartReminder = () => {
     try {
       await reminderApi.deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-      toast.success('Reminder deleted');
+      taskToast.success('Reminder deleted');
     } catch (error) {
       console.error('Failed to delete reminder:', error);
-      toast.error('Failed to delete reminder');
+      taskToast.error('Failed to delete reminder');
     }
   };
 

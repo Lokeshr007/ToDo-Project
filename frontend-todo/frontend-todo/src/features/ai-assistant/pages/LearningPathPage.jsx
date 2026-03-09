@@ -28,7 +28,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { format } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import { useWorkspace } from '@/app/providers/WorkspaceContext';
 import * as learningPathApi from '../api/learningPathApi';
@@ -64,7 +64,7 @@ function LearningPathPage() {
       setLearningPaths(paths);
     } catch (error) {
       console.error('Failed to fetch learning paths:', error);
-      toast.error('Failed to load learning paths');
+      taskToast.error('Failed to load learning paths');
     } finally {
       setLoading(false);
     }
@@ -101,20 +101,20 @@ function LearningPathPage() {
   const handleClonePath = async (pathId) => {
     try {
       const cloned = await learningPathApi.cloneLearningPath(pathId);
-      toast.success('Learning path cloned successfully');
+      taskToast.success('Learning path cloned successfully');
       fetchLearningPaths();
     } catch (error) {
-      toast.error('Failed to clone learning path');
+      taskToast.error('Failed to clone learning path');
     }
   };
 
   const handleRatePath = async (pathId, rating) => {
     try {
       await learningPathApi.rateLearningPath(pathId, rating);
-      toast.success('Thank you for rating!');
+      taskToast.success('Thank you for rating!');
       fetchLearningPaths();
     } catch (error) {
-      toast.error('Failed to submit rating');
+      taskToast.error('Failed to submit rating');
     }
   };
 

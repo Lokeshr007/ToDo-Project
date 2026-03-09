@@ -23,7 +23,7 @@ const ProjectMembersModal = ({ isOpen, onClose, project, onAddMember, onRemoveMe
   const handleAddByEmail = async (e) => {
     e?.preventDefault();
     if (!emailInput.trim() || !emailInput.includes('@')) {
-      taskToast.error("Please enter a valid email address");
+      tasktaskToast.error("Please enter a valid email address");
       return;
     }
 

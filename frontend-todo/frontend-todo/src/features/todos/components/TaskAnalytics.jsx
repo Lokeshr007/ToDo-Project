@@ -160,7 +160,7 @@ const TaskAnalytics = () => {
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
     
-    toast.success('Analytics exported');
+    taskToast.success('Analytics exported');
   };
 
   if (loading) {

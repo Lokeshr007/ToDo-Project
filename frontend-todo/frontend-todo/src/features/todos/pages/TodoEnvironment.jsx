@@ -26,7 +26,7 @@ import {
   FolderKanban
 } from "lucide-react";
 import { format, isToday, isTomorrow, isThisWeek, parseISO } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function TodoEnvironment() {
   const [tasks, setTasks] = useState([]);
@@ -113,7 +113,7 @@ function TodoEnvironment() {
 
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      toast.error("Failed to load tasks");
+      taskToast.error("Failed to load tasks");
     } finally {
       setLoading(false);
     }
@@ -195,7 +195,7 @@ function TodoEnvironment() {
 
   const createTask = async () => {
     if (!formData.item.trim()) {
-      toast.error('Please enter a task title');
+      taskToast.error('Please enter a task title');
       return;
     }
 
@@ -239,7 +239,7 @@ function TodoEnvironment() {
       setTasks(prev => [newTask, ...prev]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Task created successfully');
+      taskToast.success('Task created successfully');
       
       // Set reminder if enabled
       if (formData.reminder && dueDateTime) {
@@ -248,7 +248,7 @@ function TodoEnvironment() {
 
     } catch (error) {
       console.error("Failed to create task:", error);
-      toast.error(error.response?.data?.message || "Failed to create task");
+      taskToast.error(error.response?.data?.message || "Failed to create task");
     }
   };
 
@@ -295,11 +295,11 @@ function TodoEnvironment() {
       setEditingTask(null);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Task updated successfully');
+      taskToast.success('Task updated successfully');
 
     } catch (error) {
       console.error("Failed to update task:", error);
-      toast.error(error.response?.data?.message || "Failed to update task");
+      taskToast.error(error.response?.data?.message || "Failed to update task");
     }
   };
 
@@ -309,10 +309,10 @@ function TodoEnvironment() {
     try {
       await API.delete(`/todos/${taskId}`);
       setTasks(prev => prev.filter(task => task.id !== taskId));
-      toast.success('Task deleted successfully');
+      taskToast.success('Task deleted successfully');
     } catch (error) {
       console.error("Failed to delete task:", error);
-      toast.error("Failed to delete task");
+      taskToast.error("Failed to delete task");
     }
   };
 
@@ -325,10 +325,10 @@ function TodoEnvironment() {
         task.id === taskId ? { ...task, status: response.data.status } : task
       ));
       
-      toast.success(`Task marked as ${response.data.status}`);
+      taskToast.success(`Task marked as ${response.data.status}`);
     } catch (error) {
       console.error("Failed to update task status:", error);
-      toast.error("Failed to update task");
+      taskToast.error("Failed to update task");
     }
   };
 
@@ -342,7 +342,7 @@ function TodoEnvironment() {
     
     if (reminderTime > now) {
       setTimeout(() => {
-        toast.custom((t) => (
+        taskToast.custom((t) => (
           <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-purple-500/30">
             <div className="flex items-center gap-3">
               <Clock className="text-purple-400" size={20} />

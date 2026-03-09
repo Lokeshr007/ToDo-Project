@@ -26,7 +26,7 @@ import {
   Brain,
   Zap
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import { useWorkspace } from '@/app/providers/WorkspaceContext';
 import * as projectApi from '@/services/api/projectApi';
@@ -80,7 +80,7 @@ function ProjectStructurePage() {
 
     } catch (error) {
       console.error('Failed to fetch project structure:', error);
-      toast.error('Failed to load project structure');
+      taskToast.error('Failed to load project structure');
     } finally {
       setLoading(false);
     }

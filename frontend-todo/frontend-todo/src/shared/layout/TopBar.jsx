@@ -8,8 +8,9 @@ import { useAuth } from "@/app/providers/AuthContext";
 import { useWorkspace } from "@/app/providers/WorkspaceContext";
 import { useNavigate, Link } from "react-router-dom";
 import API from "@/services/api";
-import toast from 'react-hot-toast';
+import { taskToast } from "@/shared/components/QuantumToaster";
 import { formatDistanceToNow } from 'date-fns';
+import realtimeService from "@/services/realtimeService";
 
 function TopBar() {
   const [workspaces, setWorkspaces] = useState([]);
@@ -64,13 +65,34 @@ function TopBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Poll for unread count every 30 seconds
+  // Subscribe to real-time notifications
+  useEffect(() => {
+    if (user) {
+      realtimeService.connect(() => {
+        realtimeService.subscribe(`/user/${user.id}/queue/notifications`, (notification) => {
+          setUnreadCount(prev => prev + 1);
+          setNotifications(prev => [notification, ...prev].slice(0, 10));
+          tasktaskToast.info(notification.title || "New notification", {
+            description: notification.message
+          });
+        });
+      });
+    }
+
+    return () => {
+      if (user) {
+        realtimeService.unsubscribe(`/user/${user.id}/queue/notifications`);
+      }
+    };
+  }, [user]);
+
+  // Poll for unread count every 60 seconds as fallback
   useEffect(() => {
     if (!user) return;
     
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 30000);
+    }, 60000);
     
     return () => clearInterval(interval);
   }, [user]);
@@ -152,12 +174,12 @@ function TopBar() {
         setShowSearchResults(false);
         
         switchWorkspace(workspace);
-        toast.success(`Switched to ${workspace.name}`);
+        tasktaskToast.success(`Switched to ${workspace.name}`);
         navigate('/app/dashboard');
       }
     } catch (error) {
       console.error("Failed to switch workspace:", error);
-      toast.error("Failed to switch workspace");
+      tasktaskToast.error("Failed to switch workspace");
     }
   };
 
@@ -178,10 +200,10 @@ function TopBar() {
       await API.post("/notifications/read-all");
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
-      toast.success("All notifications marked as read");
+      tasktaskToast.success("All notifications marked as read");
     } catch (error) {
       console.error("Failed to mark all as read:", error);
-      toast.error("Failed to mark all as read");
+      tasktaskToast.error("Failed to mark all as read");
     }
   };
 

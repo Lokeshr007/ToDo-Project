@@ -1,6 +1,6 @@
 // D:\AllProjects\ToDoProject\frontend-todo\frontend-todo\src\features\ai-assistant\hooks\useEnterpriseAI.js
 import { useState, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import * as enterpriseAIApi from '../api/enterpriseAIApi';
 import * as contextApi from '../api/contextApi';
 
@@ -28,7 +28,7 @@ export const useEnterpriseAI = () => {
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to process message';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -49,12 +49,12 @@ export const useEnterpriseAI = () => {
         setSessionId(response.sessionId);
       }
       
-      toast.success('File processed successfully!');
+      taskToast.success('File processed successfully!');
       return response;
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to process file';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -67,12 +67,12 @@ export const useEnterpriseAI = () => {
     
     try {
       const response = await enterpriseAIApi.refinePlan(planId, instructions);
-      toast.success('Plan refined successfully!');
+      taskToast.success('Plan refined successfully!');
       return response;
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to refine plan';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -85,12 +85,12 @@ export const useEnterpriseAI = () => {
     
     try {
       const response = await enterpriseAIApi.acceptTasks(taskIds, workspaceId);
-      toast.success(`Created ${response.createdCount} tasks!`);
+      taskToast.success(`Created ${response.createdCount} tasks!`);
       return response;
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to accept tasks';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -140,7 +140,7 @@ export const useEnterpriseAI = () => {
       await contextApi.clearContext(sessionId);
       setSessionId(null);
       setContext(null);
-      toast.success('Context cleared');
+      taskToast.success('Context cleared');
     } catch (err) {
       console.error('Failed to clear context:', err);
     }

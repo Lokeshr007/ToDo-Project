@@ -30,7 +30,7 @@ const NotificationsPage = () => {
       setNotifications(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
-      taskToast.error("Failed to load notifications");
+      tasktaskToast.error("Failed to load notifications");
     } finally {
       setLoading(false);
     }
@@ -49,10 +49,10 @@ const NotificationsPage = () => {
     try {
       await API.post("/notifications/read-all");
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      taskToast.success("All notifications marked as read");
+      tasktaskToast.success("All notifications marked as read");
     } catch (error) {
       console.error("Failed to mark all as read:", error);
-      taskToast.error("Failed to mark all as read");
+      tasktaskToast.error("Failed to mark all as read");
     }
   };
 
@@ -61,10 +61,10 @@ const NotificationsPage = () => {
     try {
       await API.delete(`/notifications/${id}`);
       setNotifications(prev => prev.filter(n => n.id !== id));
-      taskToast.success("Notification deleted");
+      tasktaskToast.success("Notification deleted");
     } catch (error) {
       console.error("Failed to delete notification:", error);
-      taskToast.error("Failed to delete notification");
+      tasktaskToast.error("Failed to delete notification");
     }
   };
 

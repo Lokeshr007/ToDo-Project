@@ -30,7 +30,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import { format } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import { useEnterpriseAI } from '../hooks/useEnterpriseAI';
 import ChatInterface from './ChatInterface';
@@ -179,7 +179,7 @@ How can I assist you today?`,
       };
       setMessages(prev => [...prev, errorMessage]);
       
-      toast.error('Failed to process message');
+      taskToast.error('Failed to process message');
     }
   };
 
@@ -213,7 +213,7 @@ Would you like me to generate a structured 60-day learning plan based on this do
 
   const handleGeneratePlan = async () => {
     if (!uploadedFile) {
-      toast.error('Please upload a file first');
+      taskToast.error('Please upload a file first');
       return;
     }
 
@@ -270,7 +270,7 @@ You can now review, customize, and accept the tasks below.`,
 
     } catch (err) {
       console.error('Failed to generate plan:', err);
-      toast.error('Failed to generate plan');
+      taskToast.error('Failed to generate plan');
       
       const errorMessage = {
         id: `error-${Date.now()}`,
@@ -287,7 +287,7 @@ You can now review, customize, and accept the tasks below.`,
 
   const handleAcceptTasks = async () => {
     if (selectedTasks.size === 0) {
-      toast.error('Please select at least one task');
+      taskToast.error('Please select at least one task');
       return;
     }
 
@@ -315,11 +315,11 @@ Would you like me to explain how to get started with your first tasks?`,
       };
       setMessages(prev => [...prev, successMessage]);
 
-      toast.success(`Created ${result.createdCount || selectedTasks.size} tasks successfully!`);
+      taskToast.success(`Created ${result.createdCount || selectedTasks.size} tasks successfully!`);
 
     } catch (err) {
       console.error('Failed to create tasks:', err);
-      toast.error('Failed to create tasks');
+      taskToast.error('Failed to create tasks');
     }
   };
 
@@ -351,7 +351,7 @@ Please review the changes and let me know if you need further adjustments.`,
 
     } catch (err) {
       console.error('Failed to refine plan:', err);
-      toast.error('Failed to refine plan');
+      taskToast.error('Failed to refine plan');
     }
   };
 
@@ -359,12 +359,12 @@ Please review the changes and let me know if you need further adjustments.`,
     actions.forEach(action => {
       switch(action) {
         case 'CREATE_PROJECT':
-          toast.success('Project structure ready for review');
+          taskToast.success('Project structure ready for review');
           setProjectStructure(data?.projectStructure);
           setStep('structure');
           break;
         case 'CREATE_TASK':
-          toast.success('Tasks generated');
+          taskToast.success('Tasks generated');
           setGeneratedTasks(data?.tasks || []);
           setStep('preview');
           break;
@@ -421,7 +421,7 @@ Please review the changes and let me know if you need further adjustments.`,
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
     
-    toast.success('Plan exported successfully');
+    taskToast.success('Plan exported successfully');
   };
 
   const resetChat = () => {
@@ -434,7 +434,7 @@ Please review the changes and let me know if you need further adjustments.`,
       setUploadedFile(null);
       setAnalysisResult(null);
       setStep('chat');
-      toast.success('Started new conversation');
+      taskToast.success('Started new conversation');
     }
   };
 

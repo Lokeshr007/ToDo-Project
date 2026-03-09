@@ -1,6 +1,6 @@
 // D:\AllProjects\ToDoProject\frontend-todo\frontend-todo\src\features\ai-assistant\hooks\useLearningPath.js
 import { useState, useCallback, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import * as learningPathApi from '../api/learningPathApi';
 import { generatePathVisualization, calculateCriticalPath } from '../utils/learningPathVisualizer';
 
@@ -35,7 +35,7 @@ export const useLearningPath = (pathId) => {
       
     } catch (error) {
       console.error('Failed to fetch learning path:', error);
-      toast.error('Failed to load learning path');
+      taskToast.error('Failed to load learning path');
     } finally {
       setLoading(false);
     }
@@ -61,10 +61,10 @@ export const useLearningPath = (pathId) => {
     try {
       const updated = await learningPathApi.updateLearningPath(pathId, updates);
       setPath(updated);
-      toast.success('Learning path updated');
+      taskToast.success('Learning path updated');
       return updated;
     } catch (error) {
-      toast.error('Failed to update learning path');
+      taskToast.error('Failed to update learning path');
       throw error;
     } finally {
       setLoading(false);
@@ -75,10 +75,10 @@ export const useLearningPath = (pathId) => {
     setLoading(true);
     try {
       await learningPathApi.deleteLearningPath(pathId);
-      toast.success('Learning path deleted');
+      taskToast.success('Learning path deleted');
       return true;
     } catch (error) {
-      toast.error('Failed to delete learning path');
+      taskToast.error('Failed to delete learning path');
       throw error;
     } finally {
       setLoading(false);
@@ -89,10 +89,10 @@ export const useLearningPath = (pathId) => {
     setLoading(true);
     try {
       const cloned = await learningPathApi.cloneLearningPath(pathId);
-      toast.success('Learning path cloned');
+      taskToast.success('Learning path cloned');
       return cloned;
     } catch (error) {
-      toast.error('Failed to clone learning path');
+      taskToast.error('Failed to clone learning path');
       throw error;
     } finally {
       setLoading(false);
@@ -102,9 +102,9 @@ export const useLearningPath = (pathId) => {
   const ratePath = useCallback(async (rating, review) => {
     try {
       await learningPathApi.rateLearningPath(pathId, rating, review);
-      toast.success('Thank you for rating!');
+      taskToast.success('Thank you for rating!');
     } catch (error) {
-      toast.error('Failed to submit rating');
+      taskToast.error('Failed to submit rating');
       throw error;
     }
   }, [pathId]);
@@ -155,10 +155,10 @@ export const useLearningPath = (pathId) => {
   const markMilestone = useCallback(async (milestoneId) => {
     try {
       // API call to mark milestone
-      toast.success('Milestone achieved! 🎉');
+      taskToast.success('Milestone achieved! 🎉');
       await fetchProgress();
     } catch (error) {
-      toast.error('Failed to mark milestone');
+      taskToast.error('Failed to mark milestone');
     }
   }, [fetchProgress]);
 

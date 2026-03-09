@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { smartScheduler } from '../utils/smartScheduler';
 import { addDays, format, differenceInDays } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) => {
   const [tasks, setTasks] = useState(initialTasks);
@@ -41,7 +41,7 @@ export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) =>
       setSuggestions(optimizationSuggestions);
     } catch (error) {
       console.error('Failed to analyze schedule:', error);
-      toast.error('Failed to analyze schedule');
+      taskToast.error('Failed to analyze schedule');
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) =>
 
   const addTask = useCallback((task) => {
     setTasks(prev => [...prev, { ...task, id: task.id || `task-${Date.now()}` }]);
-    toast.success('Task added to schedule');
+    taskToast.success('Task added to schedule');
   }, []);
 
   const updateTask = useCallback((taskId, updates) => {
@@ -58,34 +58,34 @@ export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) =>
         ? { ...task, ...updates } 
         : task
     ));
-    toast.success('Task updated');
+    taskToast.success('Task updated');
   }, []);
 
   const removeTask = useCallback((taskId) => {
     setTasks(prev => prev.filter(task => 
       task.id !== taskId && task.title !== taskId
     ));
-    toast.success('Task removed from schedule');
+    taskToast.success('Task removed from schedule');
   }, []);
 
   const rescheduleTask = useCallback((taskId, newDate, newTime) => {
     const updated = smartScheduler.rescheduleTask(tasks, taskId, newDate, newTime);
     setTasks(updated);
-    toast.success('Task rescheduled');
+    taskToast.success('Task rescheduled');
     return updated;
   }, [tasks]);
 
   const balanceWorkload = useCallback(() => {
     const balanced = smartScheduler.balanceWorkload(tasks, preferences.dailyHours || 4);
     setTasks(balanced);
-    toast.success('Workload balanced across days');
+    taskToast.success('Workload balanced across days');
     return balanced;
   }, [tasks, preferences]);
 
   const applySuggestion = useCallback((suggestion) => {
     const updated = smartScheduler.applySuggestion(tasks, suggestion);
     setTasks(updated);
-    toast.success('Suggestion applied');
+    taskToast.success('Suggestion applied');
     return updated;
   }, [tasks]);
 
@@ -111,7 +111,7 @@ export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) =>
 
   const updatePreferences = useCallback((newPreferences) => {
     setPreferences(prev => ({ ...prev, ...newPreferences }));
-    toast.success('Preferences updated');
+    taskToast.success('Preferences updated');
   }, []);
 
   const clearSchedule = useCallback(() => {
@@ -120,7 +120,7 @@ export const useSmartScheduler = (initialTasks = [], initialPreferences = {}) =>
     setOptimizedTasks([]);
     setConflicts([]);
     setSuggestions([]);
-    toast.success('Schedule cleared');
+    taskToast.success('Schedule cleared');
   }, []);
 
   const getTaskStats = useMemo(() => {

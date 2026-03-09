@@ -20,7 +20,7 @@ import {
 import { format, addDays, subDays, differenceInDays, isBefore, isAfter, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { goalApi } from '../api/goalApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const GoalTracker = () => {
   const [goals, setGoals] = useState([]);
@@ -67,7 +67,7 @@ const GoalTracker = () => {
       setGoals(data);
     } catch (error) {
       console.error('Failed to fetch goals:', error);
-      toast.error('Failed to load goals');
+      taskToast.error('Failed to load goals');
     }
   };
 
@@ -198,7 +198,7 @@ const GoalTracker = () => {
 
   const createGoal = async () => {
     if (!formData.title.trim() || !formData.target) {
-      toast.error('Please fill in all required fields');
+      taskToast.error('Please fill in all required fields');
       return;
     }
 
@@ -215,7 +215,7 @@ const GoalTracker = () => {
       setGoals(prev => [...prev, response]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Goal created successfully');
+      taskToast.success('Goal created successfully');
 
       // Schedule reminders
       if (formData.reminder) {
@@ -223,7 +223,7 @@ const GoalTracker = () => {
       }
     } catch (error) {
       console.error('Failed to create goal:', error);
-      toast.error('Failed to create goal');
+      taskToast.error('Failed to create goal');
     }
   };
 
@@ -236,10 +236,10 @@ const GoalTracker = () => {
       setEditingGoal(null);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Goal updated successfully');
+      taskToast.success('Goal updated successfully');
     } catch (error) {
       console.error('Failed to update goal:', error);
-      toast.error('Failed to update goal');
+      taskToast.error('Failed to update goal');
     }
   };
 
@@ -249,10 +249,10 @@ const GoalTracker = () => {
     try {
       await goalApi.deleteGoal(id);
       setGoals(prev => prev.filter(g => g.id !== id));
-      toast.success('Goal deleted');
+      taskToast.success('Goal deleted');
     } catch (error) {
       console.error('Failed to delete goal:', error);
-      toast.error('Failed to delete goal');
+      taskToast.error('Failed to delete goal');
     }
   };
 
@@ -266,7 +266,7 @@ const GoalTracker = () => {
 
       if (reminderTime > now) {
         setTimeout(() => {
-          toast.custom((t) => (
+          taskToast.custom((t) => (
             <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-purple-500/30">
               <div className="flex items-center gap-3">
                 <Target className="text-purple-400" size={20} />

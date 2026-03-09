@@ -47,7 +47,7 @@ import {
   MailCheck,
   MailX,
   MessageSquare,
-  BarChart3,
+  BarChart,
   Layers,
   Activity,
   Archive,
@@ -91,7 +91,6 @@ import {
   User,
   Briefcase,
   Building2,
-  Globe2,
   Wifi,
   WifiOff,
   Bluetooth,
@@ -132,9 +131,18 @@ import {
   XCircle,
   AlertTriangle,
   Info as InfoIcon,
-  Code
+  Code,
+  Cookie,
+  UserRoundX,
+  Bug,
+  FlaskConical,
+  History,
+  Contrast,
+  Type,
+  Keyboard,
+  Webhook
 } from "lucide-react";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function Settings() {
   const navigate = useNavigate();
@@ -678,7 +686,7 @@ function Settings() {
   // Simulate feature coming soon
   const handleFeatureClick = (feature) => {
     setComingSoon(prev => ({ ...prev, [feature]: true }));
-    toast.custom((t) => (
+    taskToast.custom((t) => (
       <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-gradient-to-r from-purple-600 to-indigo-600 shadow-2xl rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
         <div className="flex-1 w-0 p-4">
           <div className="flex items-start">
@@ -697,7 +705,7 @@ function Settings() {
         </div>
         <div className="flex border-l border-purple-500">
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => taskToast.dismiss(t.id)}
             className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-white hover:text-purple-200 focus:outline-none"
           >
             <X className="h-5 w-5" />
@@ -713,7 +721,7 @@ function Settings() {
   // Toggle preview mode
   const togglePreviewMode = () => {
     setPreviewMode(!previewMode);
-    toast.success(`Preview mode ${!previewMode ? 'enabled' : 'disabled'}`);
+    taskToast.success(`Preview mode ${!previewMode ? 'enabled' : 'disabled'}`);
   };
 
   // Save settings
@@ -723,9 +731,9 @@ function Settings() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       setSavedSettings({ ...settings });
-      toast.success('Settings saved successfully!');
+      taskToast.success('Settings saved successfully!');
     } catch (error) {
-      toast.error('Failed to save settings');
+      taskToast.error('Failed to save settings');
     } finally {
       setLoading(false);
     }
@@ -735,7 +743,7 @@ function Settings() {
   const resetSettings = () => {
     if (window.confirm('Are you sure you want to reset all settings to default?')) {
       setSettings({ ...savedSettings });
-      toast.success('Settings reset to last saved state');
+      taskToast.success('Settings reset to last saved state');
     }
   };
 
@@ -877,7 +885,7 @@ function Settings() {
           { name: 'Data Sharing', description: 'Manage how your data is shared', icon: Globe, color: 'bg-blue-500/20', iconColor: 'text-blue-400' },
           { name: 'Activity Tracking', description: 'Control what activity is tracked', icon: Activity, color: 'bg-green-500/20', iconColor: 'text-green-400' },
           { name: 'Cookie Preferences', description: 'Manage cookie and tracking settings', icon: Cookie, color: 'bg-yellow-500/20', iconColor: 'text-yellow-400' },
-          { name: 'Blocked Users', description: 'Manage blocked users list', icon: UserX, color: 'bg-red-500/20', iconColor: 'text-red-400' },
+          { name: 'Blocked Users', description: 'Manage blocked users list', icon: UserRoundX, color: 'bg-red-500/20', iconColor: 'text-red-400' },
           { name: 'Data Export', description: 'Download a copy of your data', icon: Download, color: 'bg-indigo-500/20', iconColor: 'text-indigo-400' }
         ]
       },
@@ -918,7 +926,7 @@ function Settings() {
         ]
       },
       integrations: {
-        icon: Globe2,
+        icon: Globe,
         description: 'Connect with your favorite tools and services',
         features: [
           { name: 'Google Workspace', description: 'Connect Google Calendar, Drive, and more', icon: Mail, color: 'bg-blue-500/20', iconColor: 'text-blue-400' },
@@ -938,7 +946,7 @@ function Settings() {
           { name: 'Webhooks', description: 'Set up webhook integrations', icon: Webhook, color: 'bg-green-500/20', iconColor: 'text-green-400' },
           { name: 'Debug Mode', description: 'Enable debugging and logging', icon: Bug, color: 'bg-yellow-500/20', iconColor: 'text-yellow-400' },
           { name: 'Performance', description: 'Performance optimization settings', icon: TrendingUp, color: 'bg-indigo-500/20', iconColor: 'text-indigo-400' },
-          { name: 'Experimental', description: 'Try out experimental features', icon: Flask, color: 'bg-pink-500/20', iconColor: 'text-pink-400' }
+          { name: 'Experimental', description: 'Try out experimental features', icon: FlaskConical, color: 'bg-pink-500/20', iconColor: 'text-pink-400' }
         ]
       },
       billing: {
@@ -948,7 +956,7 @@ function Settings() {
           { name: 'Subscription Plans', description: 'View and change your plan', icon: Package, color: 'bg-purple-500/20', iconColor: 'text-purple-400' },
           { name: 'Payment Methods', description: 'Manage payment options', icon: CreditCard, color: 'bg-blue-500/20', iconColor: 'text-blue-400' },
           { name: 'Billing History', description: 'View past invoices', icon: History, color: 'bg-green-500/20', iconColor: 'text-green-400' },
-          { name: 'Usage Statistics', description: 'Monitor your usage and limits', icon: BarChart3, color: 'bg-yellow-500/20', iconColor: 'text-yellow-400' },
+          { name: 'Usage Statistics', description: 'Monitor your usage and limits', icon: BarChart, color: 'bg-yellow-500/20', iconColor: 'text-yellow-400' },
           { name: 'Team Billing', description: 'Manage team subscriptions', icon: Users, color: 'bg-indigo-500/20', iconColor: 'text-indigo-400' },
           { name: 'Coupons & Credits', description: 'Apply coupons and view credits', icon: Gift, color: 'bg-pink-500/20', iconColor: 'text-pink-400' }
         ]

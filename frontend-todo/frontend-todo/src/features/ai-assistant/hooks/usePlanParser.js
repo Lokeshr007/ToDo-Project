@@ -1,6 +1,6 @@
 // D:\AllProjects\ToDoProject\frontend-todo\frontend-todo\src\features\ai-assistant\hooks\usePlanParser.js
 import { useState, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import * as aiApi from '../api/aiApi';
 import { advancedPlanParser } from '../utils/advancedPlanParser';
 import { projectStructureBuilder } from '../utils/projectStructureBuilder';
@@ -31,12 +31,12 @@ export const usePlanParser = () => {
       
       setParsedPlan(planData);
       
-      toast.success('Plan parsed successfully!');
+      taskToast.success('Plan parsed successfully!');
       return planData;
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to parse plan';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -58,12 +58,12 @@ export const usePlanParser = () => {
       
       setGeneratedTasks(tasks);
       
-      toast.success(`Generated ${tasks.length} tasks!`);
+      taskToast.success(`Generated ${tasks.length} tasks!`);
       return tasks;
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to generate tasks';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export const usePlanParser = () => {
       return structure;
     } catch (err) {
       console.error('Failed to generate project structure:', err);
-      toast.error('Failed to generate project structure');
+      taskToast.error('Failed to generate project structure');
       throw err;
     } finally {
       setLoading(false);
@@ -99,12 +99,12 @@ export const usePlanParser = () => {
       // For now, simulate refinement
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      toast.success('Plan refined successfully!');
+      taskToast.success('Plan refined successfully!');
       return { success: true };
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Failed to refine plan';
       setError(errorMsg);
-      toast.error(errorMsg);
+      taskToast.error(errorMsg);
       throw err;
     } finally {
       setLoading(false);

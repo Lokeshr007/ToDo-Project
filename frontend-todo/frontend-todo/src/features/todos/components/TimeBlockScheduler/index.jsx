@@ -3,7 +3,7 @@ import { Briefcase, BookOpen, Heart, Coffee, Zap } from 'lucide-react';
 import { format, addDays, subDays, parseISO, isSameDay } from 'date-fns';
 import { timeBlockApi } from '../../api/timeBlockApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import TimeBlockHeader from './TimeBlockHeader';
 import TimeBlockStats from './TimeBlockStats';
@@ -57,7 +57,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       setBlocks(data || []);
     } catch (error) {
       console.error('Failed to fetch time blocks:', error);
-      toast.error('Failed to load schedule');
+      taskToast.error('Failed to load schedule');
     }
   }, [currentDate, viewMode]);
 
@@ -107,7 +107,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a session title');
+      taskToast.error('Please enter a session title');
       return;
     }
 
@@ -116,7 +116,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       const endDateTime = `${format(currentDate, 'yyyy-MM-dd')}T${formData.endTime}:00`;
 
       if (new Date(endDateTime) <= new Date(startDateTime)) {
-        toast.error('Conclusion time must be post-commencement');
+        taskToast.error('Conclusion time must be post-commencement');
         return;
       }
 
@@ -130,11 +130,11 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       if (editingBlock) {
         const response = await timeBlockApi.updateTimeBlock(editingBlock.id, blockData);
         setBlocks(prev => prev.map(b => b.id === editingBlock.id ? response : b));
-        toast.success('Focus session updated');
+        taskToast.success('Focus session updated');
       } else {
         const response = await timeBlockApi.createTimeBlock(blockData);
         setBlocks(prev => [...prev, response]);
-        toast.success('Focus session initialized');
+        taskToast.success('Focus session initialized');
       }
 
       setShowCreateModal(false);
@@ -142,7 +142,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
       resetForm();
     } catch (error) {
       console.error('Failed to save time block:', error);
-      toast.error('System failure: Could not save session');
+      taskToast.error('System failure: Could not save session');
     }
   };
 
@@ -151,7 +151,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
     try {
       await timeBlockApi.deleteTimeBlock(id);
       setBlocks(prev => prev.filter(b => b.id !== id));
-      toast.success('Session erased');
+      taskToast.success('Session erased');
     } catch (error) {
       console.error('Failed to delete time block:', error);
     }
@@ -165,7 +165,7 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
         completedAt: !block.completed ? new Date().toISOString() : null
       });
       setBlocks(prev => prev.map(b => b.id === block.id ? updated : b));
-      if (!block.completed) toast.success('Focus session achieved 🎉');
+      if (!block.completed) taskToast.success('Focus session achieved 🎉');
     } catch (error) {
       console.error('Failed to update block:', error);
     }
@@ -184,9 +184,9 @@ const TimeBlockScheduler = ({ onBlockSelect, selectedDate = new Date() }) => {
         endTime: newEndTime.toISOString()
       });
       setBlocks(prev => prev.map(b => b.id === draggedBlock.id ? response : b));
-      toast.success('Session rescheduled');
+      taskToast.success('Session rescheduled');
     } catch (err) {
-      toast.error('Relocation failed');
+      taskToast.error('Relocation failed');
     }
     setDraggedBlock(null);
   };

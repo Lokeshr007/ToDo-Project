@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "@/services/api";
 import { useNavigate, useLocation } from "react-router-dom";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const AuthContext = createContext();
 
@@ -27,12 +27,12 @@ export function AuthProvider({ children }) {
     const reason = params.get('reason');
     
     if (reason === 'user_not_found') {
-      toast.error('Session expired. Please login again.');
+      taskToast.error('Session expired. Please login again.');
       localStorage.clear();
       setUser(null);
       setProfile(null);
     } else if (reason === 'refresh_failed') {
-      toast.error('Session expired. Please login again.');
+      taskToast.error('Session expired. Please login again.');
       localStorage.clear();
       setUser(null);
       setProfile(null);
@@ -135,11 +135,11 @@ const login = async (data, redirectTo = "/app/dashboard") => {
     setProfile(userData);
     
     navigate(redirectTo);
-    toast.success('Login successful!');
+    taskToast.success('Login successful!');
     return true;
   } catch (error) {
     console.error("Login error:", error);
-    toast.error("Login failed");
+    taskToast.error("Login failed");
     throw error;
   }
 };
@@ -164,7 +164,7 @@ const login = async (data, redirectTo = "/app/dashboard") => {
         
         // Navigate to home
         navigate('/');
-        toast.success('Logged out successfully');
+        taskToast.success('Logged out successfully');
       }
     };
 
@@ -178,7 +178,7 @@ const login = async (data, redirectTo = "/app/dashboard") => {
       const updatedUser = { ...storedUser, ...response.data };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       
-      toast.success('Profile updated successfully');
+      taskToast.success('Profile updated successfully');
       return response.data;
     } catch (error) {
       console.error('Update profile error:', error);
@@ -187,7 +187,7 @@ const login = async (data, redirectTo = "/app/dashboard") => {
         redirectToHome('user_not_found');
       }
       
-      toast.error(error.response?.data?.message || 'Failed to update profile');
+      taskToast.error(error.response?.data?.message || 'Failed to update profile');
       throw error;
     }
   };

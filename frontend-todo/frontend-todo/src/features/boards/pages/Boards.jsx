@@ -17,7 +17,7 @@ import {
 import API from "@/services/api";
 import { useTheme } from "@/app/providers/ThemeContext";
 import { useNotification } from "@/app/providers/NotificationContext";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import { format } from 'date-fns';
 
 function Boards() {
@@ -68,7 +68,7 @@ function Boards() {
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch boards:", error);
-      toast.error("Failed to load boards");
+      taskToast.error("Failed to load boards");
       addNotification({
         type: 'error',
         title: 'Error',
@@ -81,7 +81,7 @@ function Boards() {
 
   const createBoard = async () => {
     if (!newBoardName.trim()) {
-      toast.error("Board name is required");
+      taskToast.error("Board name is required");
       return;
     }
 
@@ -93,7 +93,7 @@ function Boards() {
       setBoards([...boards, response.data]);
       setShowCreateModal(false);
       setNewBoardName("");
-      toast.success("Board created successfully");
+      taskToast.success("Board created successfully");
       addNotification({
         type: 'success',
         title: 'Success',
@@ -101,7 +101,7 @@ function Boards() {
       });
     } catch (error) {
       console.error("Failed to create board:", error);
-      toast.error(error.response?.data?.message || "Failed to create board");
+      taskToast.error(error.response?.data?.message || "Failed to create board");
     }
   };
 
@@ -119,10 +119,10 @@ function Boards() {
       setShowEditModal(false);
       setSelectedBoard(null);
       setNewBoardName("");
-      toast.success("Board updated successfully");
+      taskToast.success("Board updated successfully");
     } catch (error) {
       console.error("Failed to update board:", error);
-      toast.error(error.response?.data?.message || "Failed to update board");
+      taskToast.error(error.response?.data?.message || "Failed to update board");
     }
   };
 
@@ -134,7 +134,7 @@ function Boards() {
     try {
       await API.delete(`/boards/${boardId}`);
       setBoards(boards.filter(b => b.id !== boardId));
-      toast.success("Board deleted successfully");
+      taskToast.success("Board deleted successfully");
       addNotification({
         type: 'success',
         title: 'Success',
@@ -142,7 +142,7 @@ function Boards() {
       });
     } catch (error) {
       console.error("Failed to delete board:", error);
-      toast.error(error.response?.data?.message || "Failed to delete board");
+      taskToast.error(error.response?.data?.message || "Failed to delete board");
     }
   };
 
@@ -150,10 +150,10 @@ function Boards() {
     try {
       const response = await API.post(`/boards/${board.id}/duplicate`);
       setBoards([...boards, response.data]);
-      toast.success("Board duplicated successfully");
+      taskToast.success("Board duplicated successfully");
     } catch (error) {
       console.error("Failed to duplicate board:", error);
-      toast.error("Failed to duplicate board");
+      taskToast.error("Failed to duplicate board");
     }
   };
 

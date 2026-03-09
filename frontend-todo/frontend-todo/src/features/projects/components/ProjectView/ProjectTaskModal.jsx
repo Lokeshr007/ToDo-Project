@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader, MessageSquare, Clock, Calendar as CalendarIcon, Hash, Type, AlignLeft, User as UserIcon, Flag, Save } from 'lucide-react';
+import { X, Loader, MessageSquare, Clock, Calendar as CalendarIcon, Hash, Type, AlignLeft, User as UserIcon, Flag, Save, Check } from 'lucide-react';
+import MemberSearch from '@/shared/components/MemberSearch';
 import API from "@/services/api";
 import { format } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, boards }) => {
   const [taskData, setTaskData] = useState({
@@ -38,7 +39,7 @@ const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, board
 
   const handleSave = async () => {
     if (!taskData.item?.trim()) {
-      toast.error('Project directive title is mandatory');
+      taskToast.error('Project directive title is mandatory');
       return;
     }
 
@@ -53,7 +54,7 @@ const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, board
           dueDate: taskData.dueDate,
           assignedToId: taskData.assignedToId
         });
-        toast.success('Directive updated successfully');
+        taskToast.success('Directive updated successfully');
       } else {
         await API.post(`/kanban/columns/${taskData.columnId}/tasks`, {
           item: taskData.item,
@@ -62,13 +63,13 @@ const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, board
           dueDate: taskData.dueDate,
           assignedToId: taskData.assignedToId
         });
-        toast.success('New directive deployed');
+        taskToast.success('New directive deployed');
       }
       onUpdate();
       onClose();
     } catch (error) {
       console.error("Failed to save task:", error);
-      toast.error(error.response?.data?.message || 'Transaction aborted: Storage failure');
+      taskToast.error(error.response?.data?.message || 'Transaction aborted: Storage failure');
     } finally {
       setLoading(false);
     }
@@ -83,9 +84,9 @@ const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, board
       });
       setComments([...comments, response.data]);
       setNewComment('');
-      toast.success('Comment logged');
+      taskToast.success('Comment logged');
     } catch (error) {
-      toast.error('Inter-service communication failure');
+      taskToast.error('Inter-service communication failure');
     }
   };
 
@@ -213,24 +214,12 @@ const ProjectTaskModal = ({ task, onClose, onUpdate, themeStyles, members, board
                   </select>
                 </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-2 ml-1">
-                    <UserIcon size={12} className="text-blue-500" />
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ownership Assigment</label>
-                  </div>
-                  <select
-                    value={taskData.assignedToId || ''}
-                    onChange={(e) => setTaskData({ ...taskData, assignedToId: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-700/50 rounded-xl text-white focus:outline-none font-bold text-sm cursor-pointer"
-                  >
-                    <option value="">Awaiting Assignment</option>
-                    {members.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.name || member.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <MemberSearch 
+                  selectedUserId={taskData.assignedToId}
+                  onSelect={(userId) => setTaskData({ ...taskData, assignedToId: userId })}
+                  users={members}
+                  label="Ownership Assignment (Email Search)"
+                />
 
                 <div>
                   <div className="flex items-center gap-2 mb-2 ml-1">

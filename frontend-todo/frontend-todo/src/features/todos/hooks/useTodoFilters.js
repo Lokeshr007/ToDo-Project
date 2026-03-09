@@ -17,9 +17,12 @@ export const useTodoFilters = (todos) => {
 
     // Apply search
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(todo => 
-        (todo.item || todo.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (todo.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+        (todo.item || todo.title || '').toLowerCase().includes(query) ||
+        (todo.description || '').toLowerCase().includes(query) ||
+        (todo.project?.name || '').toLowerCase().includes(query) ||
+        (todo.assignedTo?.name || '').toLowerCase().includes(query)
       );
     }
 

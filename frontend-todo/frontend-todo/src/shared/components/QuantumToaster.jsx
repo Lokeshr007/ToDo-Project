@@ -1,5 +1,5 @@
 // src/shared/components/QuantumToaster.jsx
-// Quantum Status HUD: A premium, centralized notification system that replaces traditional toasts.
+// Nebula Activity Log: A bottom-right holographic system log that replaces traditional toasts.
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -11,10 +11,12 @@ import {
   Loader2,
   Sparkles,
   X,
-  Bell
+  Bell,
+  Activity,
+  Zap,
+  Terminal
 } from 'lucide-react';
 
-// ── Shared Event Bus ────────────────────────────────────────────────────────
 const subscribers = new Set();
 
 export const taskToast = {
@@ -24,15 +26,15 @@ export const taskToast = {
   info: (message, opts = {}) => emit('info', message, opts),
   loading: (message, opts = {}) => emit('loading', message, { ...opts, persist: true }),
   promise: async (promise, msgs = {}) => {
-    const id = emit('loading', msgs.loading || 'Quantum Processing...', { persist: true });
+    const id = emit('loading', msgs.loading || 'Neural Link Establishing...', { persist: true });
     try {
       const result = await promise;
       dismiss(id);
-      emit('success', msgs.success || 'Operation Successful');
+      emit('success', msgs.success || 'Link Stable');
       return result;
     } catch (err) {
       dismiss(id);
-      emit('error', msgs.error || 'Operation Failed');
+      emit('error', msgs.error || 'Link Severed');
       throw err;
     }
   },
@@ -41,14 +43,14 @@ export const taskToast = {
 
 let uid = 0;
 function emit(type, message, opts = {}) {
-  const id = `q-hud-${++uid}`;
+  const id = `nebula-${++uid}`;
   subscribers.forEach(fn => fn({ 
     id, 
     type, 
     message, 
     description: opts.description, 
     persist: opts.persist || false,
-    duration: opts.duration || 4000 
+    duration: opts.duration || 5000 
   }));
   return id;
 }
@@ -57,53 +59,46 @@ function dismiss(id) {
   subscribers.forEach(fn => fn({ id, _dismiss: true }));
 }
 
-// ── Theme Config ───────────────────────────────────────────────────────────
 const THEMES = {
   success: {
     icon: CheckCircle2,
     color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    border: 'border-emerald-500/30',
-    glow: 'shadow-[0_0_20px_-3px_rgba(16,185,129,0.3)]',
-    label: 'Done',
+    border: 'border-emerald-500/20',
+    glow: 'shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]',
+    tag: 'SUCCESS'
   },
   error: {
     icon: XCircle,
     color: 'text-rose-400',
-    bg: 'bg-rose-500/10',
-    border: 'border-rose-500/30',
-    glow: 'shadow-[0_0_20px_-3px_rgba(244,63,94,0.3)]',
-    label: 'Alert',
+    border: 'border-rose-500/20',
+    glow: 'shadow-[0_0_15px_-3px_rgba(244,63,94,0.2)]',
+    tag: 'CRITICAL'
   },
   warning: {
     icon: AlertTriangle,
     color: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    border: 'border-amber-500/30',
-    glow: 'shadow-[0_0_20px_-3px_rgba(245,158,11,0.3)]',
-    label: 'Notice',
+    border: 'border-amber-500/20',
+    glow: 'shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)]',
+    tag: 'WARNING'
   },
   info: {
-    icon: Sparkles,
-    color: 'text-indigo-400',
-    bg: 'bg-indigo-500/10',
-    border: 'border-indigo-500/30',
-    glow: 'shadow-[0_0_20px_-3px_rgba(99,102,241,0.3)]',
-    label: 'System',
+    icon: Zap,
+    color: 'text-blue-400',
+    border: 'border-blue-500/20',
+    glow: 'shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]',
+    tag: 'INFO'
   },
   loading: {
     icon: Loader2,
     color: 'text-purple-400',
-    bg: 'bg-purple-500/10',
-    border: 'border-purple-500/30',
-    glow: 'shadow-[0_0_20px_-3px_rgba(168,85,247,0.3)]',
-    label: 'Syncing',
-    animate: true,
+    border: 'border-purple-500/20',
+    glow: 'shadow-[0_0_15px_-3px_rgba(168,85,247,0.2)]',
+    tag: 'PENDING',
+    animate: true
   },
 };
 
-// ── HUD Item ────────────────────────────────────────────────────────────────
-function HUDItem({ item, onDismiss, index, isTop }) {
+function LogItem({ item, onDismiss }) {
   const theme = THEMES[item.type] || THEMES.info;
   const Icon = theme.icon;
 
@@ -116,59 +111,57 @@ function HUDItem({ item, onDismiss, index, isTop }) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -20, scale: 0.9 }}
-      animate={{ 
-        opacity: isTop ? 1 : 0.4, 
-        y: index * 10, 
-        scale: isTop ? 1 : 0.95 - (index * 0.05),
-        zIndex: 100 - index
-      }}
-      exit={{ opacity: 0, scale: 0.8, y: -40 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      initial={{ opacity: 0, x: 100, scale: 0.9 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 50, scale: 0.9, height: 0, marginBottom: 0 }}
+      transition={{ type: 'spring', damping: 20, stiffness: 200 }}
       className={`
-        pointer-events-auto relative
-        flex items-center gap-4 min-w-[320px] max-w-md
-        px-6 py-4 rounded-3xl
-        bg-slate-900/80 backdrop-blur-2xl border ${theme.border}
-        ${theme.glow}
-        transition-all duration-500
+        mb-3 w-80 overflow-hidden
+        bg-slate-900/40 backdrop-blur-xl border-l-2 ${theme.border}
+        rounded-l-xl p-4 flex gap-4 items-start
+        relative group hover:bg-slate-900/60 transition-all duration-300
       `}
     >
-      <div className={`shrink-0 ${theme.animate ? 'animate-spin' : ''}`}>
-        <Icon size={20} className={theme.color} />
+      <div className={`mt-0.5 shrink-0 ${theme.animate ? 'animate-spin' : ''}`}>
+        <Icon size={16} className={theme.color} />
       </div>
-      
+
       <div className="flex-1 min-w-0">
-        <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-0.5">
-          {theme.label}
-        </label>
-        <p className="text-sm font-medium text-slate-100 leading-tight truncate">
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-[10px] font-black font-mono tracking-tighter ${theme.color}`}>
+            [{theme.tag}]
+          </span>
+          <span className="text-[9px] text-slate-600 font-mono">
+            {new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+        </div>
+        <p className="text-sm font-medium text-slate-300 leading-tight">
           {item.message}
         </p>
+        {item.description && (
+          <p className="text-xs text-slate-500 mt-1 italic line-clamp-2">
+            {item.description}
+          </p>
+        )}
       </div>
 
-      {isTop && (
-        <button
-          onClick={() => onDismiss(item.id)}
-          className="shrink-0 p-1.5 hover:bg-white/5 rounded-full text-slate-500 hover:text-white transition-colors"
-        >
-          <X size={14} />
-        </button>
-      )}
+      <button
+        onClick={() => onDismiss(item.id)}
+        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/5 rounded text-slate-600 hover:text-white transition-all"
+      >
+        <X size={12} />
+      </button>
 
-      {/* Unique Pulse Effect for top item */}
-      {isTop && (
-        <motion.div 
-          className="absolute inset-0 rounded-3xl border border-white/10 pointer-events-none"
-          animate={{ opacity: [0, 0.5, 0], scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-      )}
+      {/* Holographic scanning line effect */}
+      <motion.div 
+        className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-1/2 w-full pointer-events-none"
+        animate={{ y: ['-100%', '200%'] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+      />
     </motion.div>
   );
 }
 
-// ── Quantum Status HUD Root ──────────────────────────────────────────────────
 export default function QuantumToaster() {
   const [items, setItems] = useState([]);
 
@@ -177,10 +170,7 @@ export default function QuantumToaster() {
       if (event._dismiss) {
         setItems(prev => prev.filter(i => i.id !== event.id));
       } else {
-        setItems(prev => {
-          const filtered = prev.filter(i => i.message !== event.message);
-          return [event, ...filtered].slice(0, 3);
-        });
+        setItems(prev => [event, ...prev].slice(0, 5));
       }
     };
     subscribers.add(handler);
@@ -194,14 +184,16 @@ export default function QuantumToaster() {
   if (items.length === 0) return null;
 
   return createPortal(
-    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[10000] flex flex-col items-center pointer-events-none perspective-1000">
+    <div className="fixed bottom-6 right-0 z-[10000] flex flex-col items-end pointer-events-none">
+      <div className="pr-4 mb-2 flex items-center gap-2 text-slate-500">
+        <Terminal size={12} />
+        <span className="text-[10px] font-black uppercase tracking-widest font-mono">Activity Log</span>
+      </div>
       <AnimatePresence mode="popLayout">
-        {items.map((item, index) => (
-          <HUDItem 
+        {items.map((item) => (
+          <LogItem 
             key={item.id} 
             item={item} 
-            index={index} 
-            isTop={index === 0} 
             onDismiss={dismiss} 
           />
         ))}

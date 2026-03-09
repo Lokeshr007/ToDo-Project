@@ -1,6 +1,6 @@
 // D:\AllProjects\ToDoProject\frontend-todo\frontend-todo\src\features\ai-assistant\hooks\useAIContext.js
 import { useState, useCallback, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import * as contextApi from '../api/contextApi';
 import API from '@/services/api';
 
@@ -44,11 +44,11 @@ export const useAIContext = (initialSessionId = null) => {
       
       setSessionId(newSessionId);
       setContext(response.insights || {});
-      toast.success('New conversation started');
+      taskToast.success('New conversation started');
       
       return newSessionId;
     } catch (error) {
-      toast.error('Failed to create context');
+      taskToast.error('Failed to create context');
       throw error;
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export const useAIContext = (initialSessionId = null) => {
       }
     } catch (error) {
       console.error('Failed to update context:', error);
-      toast.error('Failed to update context');
+      taskToast.error('Failed to update context');
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ export const useAIContext = (initialSessionId = null) => {
       setContext(null);
       setMessageHistory([]);
       setPreferences({});
-      toast.success('Context cleared');
+      taskToast.success('Context cleared');
     } catch (error) {
       console.error('Failed to clear context:', error);
     }
@@ -106,12 +106,12 @@ export const useAIContext = (initialSessionId = null) => {
 
   const updateLearningStyle = useCallback(async (style) => {
     await updateContext({ learningStyle: style });
-    toast.success(`Learning style updated to ${style}`);
+    taskToast.success(`Learning style updated to ${style}`);
   }, [updateContext]);
 
   const updateAttentionSpan = useCallback(async (minutes) => {
     await updateContext({ attentionSpan: minutes });
-    toast.success(`Attention span updated to ${minutes} minutes`);
+    taskToast.success(`Attention span updated to ${minutes} minutes`);
   }, [updateContext]);
 
   const addStrength = useCallback(async (strength) => {
@@ -199,7 +199,7 @@ export const useAIContext = (initialSessionId = null) => {
       return assistantMessage;
     } catch (error) {
       console.error('Failed to send message:', error);
-      toast.error('Failed to send message');
+      taskToast.error('Failed to send message');
       throw error;
     } finally {
       setLoading(false);

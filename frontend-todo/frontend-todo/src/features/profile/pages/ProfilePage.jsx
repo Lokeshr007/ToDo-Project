@@ -12,7 +12,7 @@ import {
   Camera,
   Check
 } from "lucide-react";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import API from "@/services/api";
 
 // Import components
@@ -166,10 +166,10 @@ function ProfilePage() {
         await refreshUser();
       }
       setIsEditing(false);
-      toast.success("Profile updated successfully");
+      taskToast.success("Profile updated successfully");
     } catch (error) {
       console.error("Update failed:", error);
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      taskToast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setUpdateLoading(false);
     }
@@ -220,14 +220,14 @@ function ProfilePage() {
     // Validate file type
     const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validImageTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      taskToast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
       return;
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      toast.error(`Image size should be less than 5MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      taskToast.error(`Image size should be less than 5MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
       return;
     }
 
@@ -248,14 +248,14 @@ function ProfilePage() {
       }
       
       setAvatarUploadSuccess(true);
-      toast.success(`Avatar uploaded successfully: ${file.name}`);
+      taskToast.success(`Avatar uploaded successfully: ${file.name}`);
       
       // Reset success indicator after 3 seconds
       setTimeout(() => setAvatarUploadSuccess(false), 3000);
     } catch (error) {
       console.error("Avatar upload failed:", error);
       const errorMessage = error.response?.data?.message || "Failed to upload avatar";
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
     } finally {
       setUploadingAvatar(false);
       // Clear the file input
@@ -270,14 +270,14 @@ function ProfilePage() {
     // Validate file type
     const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validImageTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      taskToast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
       return;
     }
 
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      toast.error(`Cover image size should be less than 10MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
+      taskToast.error(`Cover image size should be less than 10MB. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
       return;
     }
 
@@ -298,14 +298,14 @@ function ProfilePage() {
       }
       
       setCoverUploadSuccess(true);
-      toast.success(`Cover photo uploaded successfully: ${file.name}`);
+      taskToast.success(`Cover photo uploaded successfully: ${file.name}`);
       
       // Reset success indicator after 3 seconds
       setTimeout(() => setCoverUploadSuccess(false), 3000);
     } catch (error) {
       console.error("Cover upload failed:", error);
       const errorMessage = error.response?.data?.message || "Failed to upload cover";
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
     } finally {
       setUploadingCover(false);
       // Clear the file input
@@ -317,10 +317,10 @@ function ProfilePage() {
     try {
       await API.delete(`/users/sessions/${sessionId}`);
       setSessions(prev => prev.filter(s => s.id !== sessionId));
-      toast.success("Session revoked successfully");
+      taskToast.success("Session revoked successfully");
     } catch (error) {
       console.error("Revoke session failed:", error);
-      toast.error(error.response?.data?.message || "Failed to revoke session");
+      taskToast.error(error.response?.data?.message || "Failed to revoke session");
     }
   };
 
@@ -328,10 +328,10 @@ function ProfilePage() {
     try {
       await API.delete("/users/sessions");
       refreshProfile();
-      toast.success("All other sessions revoked");
+      taskToast.success("All other sessions revoked");
     } catch (error) {
       console.error("Revoke all sessions failed:", error);
-      toast.error(error.response?.data?.message || "Failed to revoke sessions");
+      taskToast.error(error.response?.data?.message || "Failed to revoke sessions");
     }
   };
 
@@ -339,12 +339,12 @@ function ProfilePage() {
     e.preventDefault();
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords do not match");
+      taskToast.error("New passwords do not match");
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      taskToast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -355,10 +355,10 @@ function ProfilePage() {
         newPassword: '',
         confirmPassword: ''
       });
-      toast.success("Password changed successfully");
+      taskToast.success("Password changed successfully");
     } catch (error) {
       console.error("Change password failed:", error);
-      toast.error(error.response?.data?.message || "Failed to change password");
+      taskToast.error(error.response?.data?.message || "Failed to change password");
     }
   };
 
@@ -369,16 +369,16 @@ function ProfilePage() {
         secret: response.data.secret,
         qrCode: `otpauth://totp/TodoApp:${formData.email}?secret=${response.data.secret}&issuer=TodoApp`
       });
-      toast.success("2FA setup started");
+      taskToast.success("2FA setup started");
     } catch (error) {
       console.error("Enable 2FA failed:", error);
-      toast.error(error.response?.data?.message || "Failed to enable 2FA");
+      taskToast.error(error.response?.data?.message || "Failed to enable 2FA");
     }
   };
 
   const verify2FA = async () => {
     if (twoFactorCode.length !== 6) {
-      toast.error("Please enter a 6-digit code");
+      taskToast.error("Please enter a 6-digit code");
       return;
     }
 
@@ -387,10 +387,10 @@ function ProfilePage() {
       setTwoFactorData(null);
       setTwoFactorCode('');
       refreshProfile();
-      toast.success("Two-factor authentication enabled");
+      taskToast.success("Two-factor authentication enabled");
     } catch (error) {
       console.error("Verify 2FA failed:", error);
-      toast.error(error.response?.data?.message || "Invalid verification code");
+      taskToast.error(error.response?.data?.message || "Invalid verification code");
     }
   };
 
@@ -400,10 +400,10 @@ function ProfilePage() {
     try {
       await API.post("/users/disable-2fa");
       refreshProfile();
-      toast.success("Two-factor authentication disabled");
+      taskToast.success("Two-factor authentication disabled");
     } catch (error) {
       console.error("Disable 2FA failed:", error);
-      toast.error(error.response?.data?.message || "Failed to disable 2FA");
+      taskToast.error(error.response?.data?.message || "Failed to disable 2FA");
     }
   };
 
@@ -420,10 +420,10 @@ function ProfilePage() {
       linkElement.setAttribute('download', exportFileDefaultName);
       linkElement.click();
       
-      toast.success("Data exported successfully");
+      taskToast.success("Data exported successfully");
     } catch (error) {
       console.error("Export failed:", error);
-      toast.error(error.response?.data?.message || "Failed to export data");
+      taskToast.error(error.response?.data?.message || "Failed to export data");
     } finally {
       setExportLoading(false);
     }
@@ -431,17 +431,17 @@ function ProfilePage() {
 
   const deleteAccount = async () => {
     if (deleteConfirm !== formData.email) {
-      toast.error("Email confirmation does not match");
+      taskToast.error("Email confirmation does not match");
       return;
     }
 
     try {
       await API.delete("/users/account");
-      toast.success("Account deleted successfully");
+      taskToast.success("Account deleted successfully");
       logout();
     } catch (error) {
       console.error("Delete account failed:", error);
-      toast.error(error.response?.data?.message || "Failed to delete account");
+      taskToast.error(error.response?.data?.message || "Failed to delete account");
     }
   };
 

@@ -37,11 +37,12 @@ import ProfilePage from "@/features/profile/pages/ProfilePage";
 import Settings from "@/features/profile/pages/Settings";
 import DeviceSessions from "@/features/profile/pages/DeviceSessions";
 import TodoEnvironment from "@/features/todos/pages/TodoEnvironment";
-import TimeCapsule from "@/features/todos/pages/TimeCapsule";
 import Help from "@/features/help/pages/Help";
 import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
 import Workspaces from "@/features/workspace/pages/Workspaces";
+import WorkspaceSettings from "@/features/workspace/pages/WorkspaceSettings";
 import WorkloadWizard from "@/features/ai-assistant/pages/WorkloadWizard";
+import TimeCapsule from "@/features/todos/pages/TimeCapsule";
 
 const AppRoutes = () => {
   const { loading, user } = useAuth();
@@ -88,6 +89,7 @@ const AppRoutes = () => {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:projectId" element={<ProjectView />} />
           <Route path="workspaces" element={<Workspaces />} />
+          <Route path="workspace/settings" element={<WorkspaceSettings />} />
           <Route path="notifications" element={<NotificationsPage />} />
           
           {/* Boards */}
@@ -96,8 +98,8 @@ const AppRoutes = () => {
           
           {/* Todos */}
           <Route path="todos" element={<TodoPage />} />
-          <Route path="todo-environment" element={<TodoEnvironment />} />
           <Route path="time-capsule" element={<TimeCapsule />} />
+          <Route path="todo-environment" element={<TodoEnvironment />} />
           <Route path="discoveries" element={<DiscoveriesPage />} />
           
           {/* AI Assistant Routes - Updated to match your structure */}
@@ -107,7 +109,9 @@ const AppRoutes = () => {
             <Route path="enterprise" element={<EnterpriseAIPage />} />
             <Route path="learning-paths" element={<LearningPathPage />} />
             <Route path="learning-paths/:pathId" element={<LearningPathPage />} />
+            <Route path="project-structure" element={<ProjectStructurePage />} />
             <Route path="project-structure/:projectId" element={<ProjectStructurePage />} />
+            <Route path="workload" element={<WorkloadWizard />} />
             <Route path="workload-wizard" element={<WorkloadWizard />} />
           </Route>
           

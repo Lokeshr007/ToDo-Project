@@ -41,9 +41,13 @@ import {
   Table,
   Loader
 } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { format } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from "@/shared/components/QuantumToaster";
+import MemberSearch from "@/shared/components/MemberSearch";
+import ProjectTimelineView from "../components/ProjectTimelineView";
+import ProjectMembersModal from "../components/ProjectView/ProjectMembersModal";
+import ProjectTaskModal from "../components/ProjectView/ProjectTaskModal";
 
 function ProjectView() {
   const { projectId } = useParams();
@@ -56,6 +60,7 @@ function ProjectView() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
   const [filters, setFilters] = useState({
     assignee: 'all',
     priority: 'all',
@@ -119,10 +124,17 @@ function ProjectView() {
         })
       );
       
-      setBoards(boardsWithColumns);
+      // Only show boards that have columns. If multiple boards exist, prefer those with tasks.
+      let filteredBoards = boardsWithColumns.filter(b => b.columns && b.columns.length > 0);
+      const boardsWithTasks = filteredBoards.filter(b => b.todos && b.todos.length > 0);
+      if (boardsWithTasks.length > 0) {
+        filteredBoards = boardsWithTasks;
+      }
+      
+      setBoards(filteredBoards);
     } catch (error) {
       console.error("Failed to fetch project:", error);
-      toast.error("Failed to load project");
+      taskToast.error("Failed to load project");
       addNotification({
         type: 'error',
         title: 'Error',
@@ -156,10 +168,10 @@ function ProjectView() {
 
     // Find source and destination boards
     const sourceBoardIndex = boards.findIndex(b => 
-      b.columns?.some(col => col.id.toString() === source.droppableId)
+      b.columns?.some(col => `col-${col.id}` === source.droppableId)
     );
     const destBoardIndex = boards.findIndex(b => 
-      b.columns?.some(col => col.id.toString() === destination.droppableId)
+      b.columns?.some(col => `col-${col.id}` === destination.droppableId)
     );
 
     if (sourceBoardIndex === -1 || destBoardIndex === -1) return;
@@ -171,8 +183,8 @@ function ProjectView() {
     const sourceBoard = { ...newBoards[sourceBoardIndex] };
     const destBoard = { ...newBoards[destBoardIndex] };
     
-    const sourceColumn = sourceBoard.columns.find(col => col.id.toString() === source.droppableId);
-    const destColumn = destBoard.columns.find(col => col.id.toString() === destination.droppableId);
+    const sourceColumn = sourceBoard.columns.find(col => `col-${col.id}` === source.droppableId);
+    const destColumn = destBoard.columns.find(col => `col-${col.id}` === destination.droppableId);
     
     if (!sourceColumn || !destColumn) return;
 
@@ -181,7 +193,20 @@ function ProjectView() {
       ? sourceTasks
       : [...(destColumn.tasks || [])];
     
+    const mapColumnToStatus = (name) => {
+      const n = name.toLowerCase();
+      if (n.includes('progress')) return 'IN_PROGRESS';
+      if (n.includes('review')) return 'REVIEW';
+      if (n.includes('done') || n.includes('complete') || n.includes('finish')) return 'COMPLETED';
+      return 'PENDING';
+    };
+
     const [movedTask] = sourceTasks.splice(source.index, 1);
+    
+    // Update status based on destination column
+    const newStatus = mapColumnToStatus(destColumn.name);
+    movedTask.status = newStatus;
+    
     destTasks.splice(destination.index, 0, movedTask);
 
     sourceColumn.tasks = sourceTasks;
@@ -189,17 +214,17 @@ function ProjectView() {
 
     // Update boards with modified columns
     sourceBoard.columns = sourceBoard.columns.map(col => 
-      col.id.toString() === source.droppableId ? sourceColumn : col
+      `col-${col.id}` === source.droppableId ? sourceColumn : col
     );
     
     if (sourceBoardIndex !== destBoardIndex) {
       destBoard.columns = destBoard.columns.map(col => 
-        col.id.toString() === destination.droppableId ? destColumn : col
+        `col-${col.id}` === destination.droppableId ? destColumn : col
       );
     } else {
       sourceBoard.columns = sourceBoard.columns.map(col => {
-        if (col.id.toString() === source.droppableId) return sourceColumn;
-        if (col.id.toString() === destination.droppableId) return destColumn;
+        if (`col-${col.id}` === source.droppableId) return sourceColumn;
+        if (`col-${col.id}` === destination.droppableId) return destColumn;
         return col;
       });
     }
@@ -219,13 +244,13 @@ function ProjectView() {
     // Update on server
     try {
       await API.post('/kanban/tasks/move', {
-        taskId: parseInt(draggableId),
-        sourceColumnId: parseInt(source.droppableId),
-        destinationColumnId: parseInt(destination.droppableId),
+        taskId: parseInt(draggableId.replace('task-', '')),
+        sourceColumnId: parseInt(source.droppableId.replace('col-', '')),
+        destinationColumnId: parseInt(destination.droppableId.replace('col-', '')),
         newOrderIndex: destination.index
       });
       
-      toast.success('Task moved successfully');
+      taskToast.success('Task moved successfully');
       addNotification({
         type: 'success',
         title: 'Task Moved',
@@ -233,7 +258,7 @@ function ProjectView() {
       });
     } catch (error) {
       console.error("Failed to move task:", error);
-      toast.error("Failed to move task");
+      taskToast.error("Failed to move task");
       fetchProjectData(); // Revert on error
     }
   };
@@ -283,23 +308,23 @@ function ProjectView() {
   const createTaskInColumn = async (columnId, taskData) => {
     try {
       const response = await API.post(`/kanban/columns/${columnId}/tasks`, taskData);
-      toast.success('Task created successfully');
+      taskToast.success('Task created successfully');
       fetchProjectData();
       return response.data;
     } catch (error) {
       console.error("Failed to create task:", error);
-      toast.error("Failed to create task");
+      taskToast.error("Failed to create task");
     }
   };
 
   const updateColumn = async (columnId, columnData) => {
     try {
       await API.put(`/kanban/columns/${columnId}`, columnData);
-      toast.success('Column updated');
+      taskToast.success('Column updated');
       fetchProjectData();
     } catch (error) {
       console.error("Failed to update column:", error);
-      toast.error("Failed to update column");
+      taskToast.error("Failed to update column");
     }
   };
 
@@ -308,11 +333,11 @@ function ProjectView() {
     
     try {
       await API.delete(`/kanban/columns/${columnId}`);
-      toast.success('Column deleted');
+      taskToast.success('Column deleted');
       fetchProjectData();
     } catch (error) {
       console.error("Failed to delete column:", error);
-      toast.error("Failed to delete column");
+      taskToast.error("Failed to delete column");
     }
   };
 
@@ -338,7 +363,7 @@ function ProjectView() {
                 <h1 className={`text-2xl font-bold ${themeStyles.text}`}>{project?.name}</h1>
                 <p className={`text-sm ${themeStyles.textSecondary} mt-1 flex items-center gap-2`}>
                   <Clock size={14} />
-                  Last updated {project?.updatedAt ? format(new Date(project.updatedAt), 'MMM dd, yyyy') : 'N/A'}
+                  Last updated { (project?.updatedAt || project?.createdAt) ? format(new Date(project.updatedAt || project.createdAt), 'MMM dd, yyyy') : 'Recently'}
                 </p>
               </div>
             </div>
@@ -367,13 +392,27 @@ function ProjectView() {
                 >
                   <Calendar size={18} />
                 </button>
+                <button
+                  onClick={() => setView('timeline')}
+                  className={`p-2 transition-all ${view === 'timeline' ? themeStyles.accent + ' text-white' : themeStyles.textSecondary + ' ' + themeStyles.hover}`}
+                  title="Timeline View"
+                >
+                  <Clock size={18} />
+                </button>
               </div>
 
               {/* Action Buttons */}
-              <button className={`p-2 rounded-lg ${themeStyles.hover} transition-colors`}>
+              <button 
+                onClick={() => setShowMembersModal(true)}
+                className={`p-2 rounded-lg ${themeStyles.hover} transition-colors`}
+                title="Manage Members"
+              >
                 <Share2 size={18} className={themeStyles.textSecondary} />
               </button>
-              <button className={`p-2 rounded-lg ${themeStyles.hover} transition-colors`}>
+              <button 
+                onClick={() => taskToast.info("Project settings coming soon")}
+                className={`p-2 rounded-lg ${themeStyles.hover} transition-colors`}
+              >
                 <Settings size={18} className={themeStyles.textSecondary} />
               </button>
             </div>
@@ -526,7 +565,7 @@ function ProjectView() {
                       </div>
 
                       {/* Tasks */}
-                      <Droppable droppableId={column.id.toString()}>
+                      <Droppable droppableId={`col-${column.id}`}>
                         {(provided, snapshot) => (
                           <div
                             ref={provided.innerRef}
@@ -538,7 +577,7 @@ function ProjectView() {
                             {filterTasks(column.tasks)?.map((todo, index) => (
                               <Draggable
                                 key={todo.id}
-                                draggableId={todo.id.toString()}
+                                draggableId={`task-${todo.id}`}
                                 index={index}
                               >
                                 {(provided, snapshot) => (
@@ -649,12 +688,12 @@ function ProjectView() {
                         color: '#6b7280'
                       })
                         .then(() => {
-                          toast.success('Column created');
+                          taskToast.success('Column created');
                           fetchProjectData();
                         })
                         .catch(error => {
                           console.error("Failed to create column:", error);
-                          toast.error("Failed to create column");
+                          taskToast.error("Failed to create column");
                         });
                     }
                   }}
@@ -792,6 +831,15 @@ function ProjectView() {
             />
           </div>
         )}
+
+        {view === 'timeline' && (
+          <div className={`${themeStyles.card} rounded-2xl border ${themeStyles.border} p-0 backdrop-blur-sm bg-opacity-50 min-h-[600px]`}>
+            <ProjectTimelineView 
+              projectId={projectId}
+              themeStyles={themeStyles}
+            />
+          </div>
+        )}
       </div>
 
       {/* Task Detail Modal */}
@@ -806,6 +854,15 @@ function ProjectView() {
           themeStyles={themeStyles}
           members={members}
           boards={boards}
+        />
+      )}
+
+      {showMembersModal && (
+        <ProjectMembersModal
+          projectId={projectId}
+          workspaceId={project?.workspaceId}
+          onClose={() => setShowMembersModal(false)}
+          themeStyles={themeStyles}
         />
       )}
     </div>
@@ -847,7 +904,7 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
 
   const handleSave = async () => {
     if (!taskData.item?.trim()) {
-      toast.error('Task title is required');
+      taskToast.error('Task title is required');
       return;
     }
 
@@ -863,7 +920,7 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
           dueDate: taskData.dueDate,
           assignedToId: taskData.assignedToId
         });
-        toast.success('Task updated successfully');
+        taskToast.success('Task updated successfully');
       } else {
         // Create new task
         const response = await API.post(`/kanban/columns/${taskData.columnId}/tasks`, {
@@ -873,13 +930,13 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
           dueDate: taskData.dueDate,
           assignedToId: taskData.assignedToId
         });
-        toast.success('Task created successfully');
+        taskToast.success('Task created successfully');
       }
       onUpdate();
       onClose();
     } catch (error) {
       console.error("Failed to save task:", error);
-      toast.error(error.response?.data?.message || 'Failed to save task');
+      taskToast.error(error.response?.data?.message || 'Failed to save task');
     } finally {
       setLoading(false);
     }
@@ -894,9 +951,9 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
       });
       setComments([...comments, response.data]);
       setNewComment('');
-      toast.success('Comment added');
+      taskToast.success('Comment added');
     } catch (error) {
-      toast.error('Failed to add comment');
+      taskToast.error('Failed to add comment');
     }
   };
 
@@ -904,9 +961,9 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
     try {
       await API.patch(`/todos/${task.id}/status`, { status: newStatus });
       setTaskData({ ...taskData, status: newStatus });
-      toast.success('Status updated');
+      taskToast.success('Status updated');
     } catch (error) {
-      toast.error('Failed to update status');
+      taskToast.error('Failed to update status');
     }
   };
 
@@ -1030,23 +1087,12 @@ function TaskModal({ task, onClose, onUpdate, themeStyles, members, boards }) {
                   )}
                 </div>
 
-                <div>
-                  <label className={`block text-sm font-medium ${themeStyles.textSecondary} mb-2`}>
-                    Assignee
-                  </label>
-                  <select
-                    value={taskData.assignedToId || ''}
-                    onChange={(e) => setTaskData({ ...taskData, assignedToId: e.target.value })}
-                    className={`w-full px-4 py-2 rounded-lg ${themeStyles.input} border ${themeStyles.border} ${themeStyles.text} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  >
-                    <option value="">Unassigned</option>
-                    {members.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.name || member.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Assignee - Now with Search by Email */}
+                <MemberSearch 
+                  selectedUserId={taskData.assignedToId}
+                  onSelect={(userId) => setTaskData({ ...taskData, assignedToId: userId })}
+                  users={members}
+                />
 
                 <div>
                   <label className={`block text-sm font-medium ${themeStyles.textSecondary} mb-2`}>

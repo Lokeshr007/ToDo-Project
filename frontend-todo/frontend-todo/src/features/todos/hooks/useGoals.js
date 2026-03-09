@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { goalApi } from '../api/goalApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useGoals = () => {
   const [goals, setGoals] = useState([]);
@@ -29,10 +29,10 @@ export const useGoals = () => {
     try {
       const newGoal = await goalApi.createGoal(goalData);
       setGoals(prev => [...prev, newGoal]);
-      toast.success('Goal created successfully');
+      taskToast.success('Goal created successfully');
       return newGoal;
     } catch (err) {
-      toast.error('Failed to create goal');
+      taskToast.error('Failed to create goal');
       throw err;
     }
   };
@@ -41,10 +41,10 @@ export const useGoals = () => {
     try {
       const updated = await goalApi.updateGoal(id, goalData);
       setGoals(prev => prev.map(g => g.id === id ? updated : g));
-      toast.success('Goal updated');
+      taskToast.success('Goal updated');
       return updated;
     } catch (err) {
-      toast.error('Failed to update goal');
+      taskToast.error('Failed to update goal');
       throw err;
     }
   };
@@ -53,9 +53,9 @@ export const useGoals = () => {
     try {
       await goalApi.deleteGoal(id);
       setGoals(prev => prev.filter(g => g.id !== id));
-      toast.success('Goal deleted');
+      taskToast.success('Goal deleted');
     } catch (err) {
-      toast.error('Failed to delete goal');
+      taskToast.error('Failed to delete goal');
       throw err;
     }
   };

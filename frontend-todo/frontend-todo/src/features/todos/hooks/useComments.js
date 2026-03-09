@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import API from '@/services/api';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useComments = () => {
   const [comments, setComments] = useState({});
@@ -35,10 +35,10 @@ export const useComments = () => {
       }));
       
       setCommentText(prev => ({ ...prev, [todoId]: '' }));
-      toast.success("Comment added");
+      taskToast.success("Comment added");
     } catch (error) {
       console.error("Failed to add comment:", error);
-      toast.error("Failed to add comment");
+      taskToast.error("Failed to add comment");
     }
   };
 

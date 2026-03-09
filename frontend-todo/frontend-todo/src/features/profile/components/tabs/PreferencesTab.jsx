@@ -1,7 +1,7 @@
 import { Sun, Moon, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
 import API from "@/services/api";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import { useTheme } from "@/app/providers/ThemeContext";
 import { useLanguage } from "@/app/providers/LanguageContext";
 import { getTimezones, formatTimezone, getUserTimezone } from "@/shared/utils/timezone";
@@ -90,7 +90,7 @@ function PreferencesTab({ formData, handleInputChange, isEditing }) {
     } catch (error) {
       console.error("Failed to load preferences:", error);
       if (error.response?.status !== 401) {
-        toast.error(t('failedToLoad'));
+        taskToast.error(t('failedToLoad'));
       }
     } finally {
       setLoading(false);
@@ -123,10 +123,10 @@ function PreferencesTab({ formData, handleInputChange, isEditing }) {
         setLanguage(value);
       }
       
-      toast.success(`${key} ${t('updated')}`, { duration: 2000 });
+      taskToast.success(`${key} ${t('updated')}`, { duration: 2000 });
     } catch (error) {
       console.error("Failed to save preference:", error);
-      toast.error(error.response?.data?.message || t('failedToSave'));
+      taskToast.error(error.response?.data?.message || t('failedToSave'));
       throw error;
     } finally {
       setSaving(false);
@@ -180,10 +180,10 @@ function PreferencesTab({ formData, handleInputChange, isEditing }) {
     try {
       await API.post("/users/preferences/reset");
       await loadPreferences();
-      toast.success(t('preferencesReset'));
+      taskToast.success(t('preferencesReset'));
     } catch (error) {
       console.error("Failed to reset preferences:", error);
-      toast.error(t('failedToSave'));
+      taskToast.error(t('failedToSave'));
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import API from "@/services/api";
 import { format, isToday, startOfWeek, subDays } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 /**
  * Custom hook for centralizing dashboard data fetching and calculations.
@@ -203,7 +203,7 @@ export const useDashboardData = (currentWorkspace) => {
 
     } catch (error) {
       console.error("Dashboard hook error:", error);
-      toast.error("Failed to load dashboard sync");
+      taskToast.error("Failed to load dashboard sync");
     } finally {
       setLoading(false);
     }
@@ -214,11 +214,11 @@ export const useDashboardData = (currentWorkspace) => {
       const targetStatus = currentStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
       const response = await API.patch(`/todos/${todoId}/status`, { status: targetStatus });
       setAllTodos(prev => prev.map(t => t.id === todoId ? { ...t, status: response.data.status } : t));
-      toast.success(`Task marked as ${response.data.status}`);
+      taskToast.success(`Task marked as ${response.data.status}`);
       fetchDashboardData();
     } catch (error) {
       console.error("Failed to update status:", error);
-      toast.error("Failed to update task");
+      taskToast.error("Failed to update task");
     }
   };
 
@@ -240,3 +240,4 @@ export const useDashboardData = (currentWorkspace) => {
     updateTaskStatus
   };
 };
+

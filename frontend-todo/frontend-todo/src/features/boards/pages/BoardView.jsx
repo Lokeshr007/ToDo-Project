@@ -1,4 +1,4 @@
-import { Droppable } from 'react-beautiful-dnd';
+import { Droppable } from '@hello-pangea/dnd';
 
 const BoardView = ({ column = { id: 'default', tasks: [] } }) => {
     return (

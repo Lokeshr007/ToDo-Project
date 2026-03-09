@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const NotificationContext = createContext();
 
@@ -29,9 +29,9 @@ export const NotificationProvider = ({ children }) => {
 
     // Show toast notification
     if (notification.type === 'success') {
-      toast.success(notification.message);
+      taskToast.success(notification.message);
     } else if (notification.type === 'error') {
-      toast.error(notification.message);
+      taskToast.error(notification.message);
     } else {
       toast(notification.message);
     }
@@ -48,9 +48,9 @@ export const NotificationProvider = ({ children }) => {
   // Helper function for showing toast notifications directly
   const showNotification = useCallback((message, type = 'info') => {
     if (type === 'success') {
-      toast.success(message);
+      taskToast.success(message);
     } else if (type === 'error') {
-      toast.error(message);
+      taskToast.error(message);
     } else {
       toast(message);
     }

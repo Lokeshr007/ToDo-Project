@@ -1,7 +1,7 @@
 // frontend/src/features/profile/hooks/useProfileData.js
 import { useState, useEffect } from "react";
 import API from "@/services/api";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useProfileData = (user) => {
   const [profile, setProfile] = useState(null);
@@ -17,7 +17,7 @@ export const useProfileData = (user) => {
       return response.data;
     } catch (error) {
       console.error("Failed to fetch profile:", error);
-      toast.error(error.response?.data?.message || "Failed to load profile data");
+      taskToast.error(error.response?.data?.message || "Failed to load profile data");
       return null;
     }
   };

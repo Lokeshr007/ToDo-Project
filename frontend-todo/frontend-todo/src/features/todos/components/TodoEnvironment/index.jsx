@@ -3,7 +3,7 @@ import API from "@/services/api";
 import { useAuth } from "@/app/providers/AuthContext";
 import { useWorkspace } from "@/app/providers/WorkspaceContext";
 import { format, isToday, isTomorrow, isThisWeek } from 'date-fns';
-import { toast } from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import TodoHeader from "./TodoHeader";
 import TodoListView from "./TodoListView";
@@ -75,7 +75,7 @@ const TodoEnvironment = () => {
       setTasks(allTasks);
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      toast.error("Failed to load operational data");
+      taskToast.error("Failed to load operational data");
     } finally {
       setLoading(false);
     }
@@ -183,10 +183,10 @@ const TodoEnvironment = () => {
       
       setShowCreateModal(false);
       resetForm();
-      toast.success(editingTask ? 'Directive Updated' : 'Directive Initialized');
+      taskToast.success(editingTask ? 'Directive Updated' : 'Directive Initialized');
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Operation Failed");
+      taskToast.error("Operation Failed");
     }
   };
 
@@ -195,9 +195,9 @@ const TodoEnvironment = () => {
       const newStatus = currentStatus === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
       const response = await API.patch(`/todos/${taskId}/status`, { status: newStatus });
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: response.data.status } : t));
-      toast.success(`Directive: ${response.data.status}`);
+      taskToast.success(`Directive: ${response.data.status}`);
     } catch (error) {
-      toast.error("Status Sync Failed");
+      taskToast.error("Status Sync Failed");
     }
   };
 
@@ -206,9 +206,9 @@ const TodoEnvironment = () => {
     try {
       await API.delete(`/todos/${taskId}`);
       setTasks(prev => prev.filter(t => t.id !== taskId));
-      toast.success('Node Decommissioned');
+      taskToast.success('Node Decommissioned');
     } catch (error) {
-      toast.error("Decommission Failed");
+      taskToast.error("Decommission Failed");
     }
   };
 
@@ -309,3 +309,4 @@ const TodoEnvironment = () => {
 };
 
 export default TodoEnvironment;
+

@@ -4,11 +4,12 @@ import {
   Edit2, Trash2, FolderKanban, Tag, Play,
   BarChart
 } from 'lucide-react';
-import { formatDueDate } from '../../utils/dateHelpers';
+import { formatDueDate, formatTime } from '../../utils/dateHelpers';
 
 const TodoGridItem = ({ 
   todo, onStatusChange, onEdit, onDelete, onStartTimer, 
-  activeTimer, getPriorityColor, getStatusColor 
+  activeTimer, elapsedTime, getPriorityColor, getStatusColor,
+  selected, onSelect 
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -24,11 +25,18 @@ const TodoGridItem = ({
   return (
     <div className="bg-gray-800/50 backdrop-blur-lg rounded-lg p-4 border border-gray-700 hover:bg-gray-800 transition-colors group">
       <div className="flex items-start justify-between mb-3">
-        <button
-          onClick={handleStatusChange}
-          disabled={isUpdating}
-          className="flex-shrink-0"
-        >
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selected || false}
+            onChange={onSelect}
+            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer"
+          />
+          <button
+            onClick={handleStatusChange}
+            disabled={isUpdating}
+            className="flex-shrink-0"
+          >
           {isUpdating ? (
             <Loader size={20} className="text-purple-400 animate-spin" />
           ) : (
@@ -41,16 +49,24 @@ const TodoGridItem = ({
             </div>
           )}
         </button>
+        </div>
 
         <div className="flex gap-1">
           {todo.status !== 'COMPLETED' && (
-            <button
-              onClick={() => onStartTimer(todo.id)}
-              className={`p-1 hover:bg-gray-700 rounded ${isActiveTimer ? 'bg-red-500/20' : ''}`}
-              title="Start Timer"
-            >
-              <Play size={14} className={isActiveTimer ? 'text-red-400' : 'text-gray-400'} />
-            </button>
+            <div className="flex items-center gap-1">
+              {isActiveTimer && (
+                <span className="text-[10px] font-mono text-red-400">
+                  {formatTime(elapsedTime)}
+                </span>
+              )}
+              <button
+                onClick={() => onStartTimer(todo.id)}
+                className={`p-1 hover:bg-gray-700 rounded ${isActiveTimer ? 'bg-red-500/20' : ''}`}
+                title="Start Timer"
+              >
+                <Play size={14} className={isActiveTimer ? 'text-red-400' : 'text-gray-400'} />
+              </button>
+            </div>
           )}
           <button
             onClick={() => onEdit(todo)}

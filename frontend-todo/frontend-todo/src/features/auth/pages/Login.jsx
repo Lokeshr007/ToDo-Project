@@ -3,7 +3,7 @@ import API from "@/services/api";
 import { useNavigate, Link } from "react-router-dom";
 import { LogIn, Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthContext";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function Login() {
   const { login } = useAuth();
@@ -40,7 +40,7 @@ function Login() {
       if (response.data.success) {
         // Login with the response data
         login(response.data);
-        toast.success("Login successful!");
+        taskToast.success("Login successful!");
       } else {
         setError(response.data.message || "Invalid credentials");
       }
@@ -48,7 +48,7 @@ function Login() {
       console.error("Login error:", err);
       const errorMessage = err.response?.data?.message || "Invalid credentials. Please try again.";
       setError(errorMessage);
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ function Login() {
   const sendOtp = async () => {
     if (!formData.email) {
       setError("Please enter your email first.");
-      toast.error("Please enter your email first.");
+      taskToast.error("Please enter your email first.");
       return;
     }
     
@@ -65,20 +65,20 @@ function Login() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address");
-      toast.error("Please enter a valid email address");
+      taskToast.error("Please enter a valid email address");
       return;
     }
     
     try {
       setLoading(true);
       await API.post("/auth/login-otp/send", { email: formData.email });
-      toast.success("OTP sent to your email");
+      taskToast.success("OTP sent to your email");
       navigate("/verify-otp", { state: { email: formData.email } });
     } catch (err) {
       console.error("OTP send error:", err);
       const errorMessage = err.response?.data?.message || "Failed to send OTP. Please try again.";
       setError(errorMessage);
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
     } finally {
       setLoading(false);
     }

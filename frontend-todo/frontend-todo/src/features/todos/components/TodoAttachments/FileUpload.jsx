@@ -12,7 +12,7 @@ const FileUpload = ({ todoId, onUploadSuccess }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 25 * 1024 * 1024) {
-        taskToast.error("File size exceeds 25MB limit");
+        tasktaskToast.error("File size exceeds 25MB limit");
         return;
       }
       setSelectedFile(file);
@@ -33,12 +33,12 @@ const FileUpload = ({ todoId, onUploadSuccess }) => {
         },
       });
       
-      taskToast.success(`Uploaded: ${selectedFile.name}`);
+      tasktaskToast.success(`Uploaded: ${selectedFile.name}`);
       setSelectedFile(null);
       if (onUploadSuccess) onUploadSuccess(response.data);
     } catch (error) {
       console.error("Upload failed", error);
-      taskToast.error(error.response?.data?.error || "Upload failed");
+      tasktaskToast.error(error.response?.data?.error || "Upload failed");
     } finally {
       setIsUploading(false);
     }

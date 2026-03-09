@@ -3,7 +3,7 @@ import { Bell, BellRing, BellOff, Plus, Bell as BellIcon, BellRing as BellRingIc
 import { format, addMinutes, isBefore, differenceInMinutes } from 'date-fns';
 import { reminderApi } from '../../api/reminderApi';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 import ReminderPreferences from './ReminderPreferences';
 import ReminderItem from './ReminderItem';
@@ -81,7 +81,7 @@ const SmartReminder = () => {
           setReminders(prev => prev.map(r => 
             r.id === id ? { ...r, completed: true } : r
           ));
-          toast.success('Reminder completed');
+          taskToast.success('Reminder completed');
           break;
 
         case 'snooze':
@@ -90,14 +90,14 @@ const SmartReminder = () => {
           setReminders(prev => prev.map(r => 
             r.id === id ? { ...r, scheduledFor: snoozedTime.toISOString(), snoozed: true } : r
           ));
-          toast.success(`Reminder snoozed for ${value} minutes`);
+          taskToast.success(`Reminder snoozed for ${value} minutes`);
           break;
       }
       setActiveReminder(null);
-      toast.dismiss();
+      taskToast.dismiss();
     } catch (error) {
       console.error('Failed to handle reminder:', error);
-      toast.error('Failed to process reminder');
+      taskToast.error('Failed to process reminder');
     }
   };
 
@@ -115,7 +115,7 @@ const SmartReminder = () => {
       });
     }
 
-    toast.custom((t) => (
+    taskToast.custom((t) => (
       <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-800 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border border-purple-500/50 p-4`}>
         <div className="flex-1 w-0 pt-0.5">
           <div className="flex items-start">
@@ -133,7 +133,7 @@ const SmartReminder = () => {
                 <button
                   onClick={() => {
                     handleReminderAction(reminder.id, 'complete');
-                    toast.dismiss(t.id);
+                    taskToast.dismiss(t.id);
                   }}
                   className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors border border-purple-400/30"
                 >
@@ -142,14 +142,14 @@ const SmartReminder = () => {
                 <button
                   onClick={() => {
                     handleReminderAction(reminder.id, 'snooze', 15);
-                    toast.dismiss(t.id);
+                    taskToast.dismiss(t.id);
                   }}
                   className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors"
                 >
                   Snooze 15m
                 </button>
                 <button
-                  onClick={() => toast.dismiss(t.id)}
+                  onClick={() => taskToast.dismiss(t.id)}
                   className="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors"
                 >
                   Dismiss
@@ -200,7 +200,7 @@ const SmartReminder = () => {
 
   const handleCreate = async () => {
     if (!formData.title.trim()) {
-      toast.error('Please enter a reminder title');
+      taskToast.error('Please enter a reminder title');
       return;
     }
 
@@ -209,7 +209,7 @@ const SmartReminder = () => {
       if (formData.reminderType === 'before' && formData.todoId) {
         const todo = todos.find(t => String(t.id) === String(formData.todoId));
         if (!todo || !todo.dueDate) {
-          toast.error('Selected task has no due date');
+          taskToast.error('Selected task has no due date');
           return;
         }
         scheduledFor = addMinutes(new Date(todo.dueDate), -formData.leadTime);
@@ -218,7 +218,7 @@ const SmartReminder = () => {
       }
 
       if (scheduledFor && isBefore(scheduledFor, new Date())) {
-        toast.error('Reminder time must be in the future');
+        taskToast.error('Reminder time must be in the future');
         return;
       }
 
@@ -233,10 +233,10 @@ const SmartReminder = () => {
       setReminders(prev => [...prev, response]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Reminder scheduled successfully');
+      taskToast.success('Reminder scheduled successfully');
     } catch (error) {
       console.error('Failed to create reminder:', error);
-      toast.error('Failed to create reminder');
+      taskToast.error('Failed to create reminder');
     }
   };
 
@@ -262,10 +262,10 @@ const SmartReminder = () => {
     try {
       await reminderApi.setReminderPreferences(preferences);
       setShowPreferences(false);
-      toast.success('Preferences saved');
+      taskToast.success('Preferences saved');
     } catch (error) {
       console.error('Failed to save preferences:', error);
-      toast.error('Failed to save preferences');
+      taskToast.error('Failed to save preferences');
     }
   };
 
@@ -274,7 +274,7 @@ const SmartReminder = () => {
     try {
       await reminderApi.deleteReminder(id);
       setReminders(prev => prev.filter(r => r.id !== id));
-      toast.success('Reminder deleted');
+      taskToast.success('Reminder deleted');
     } catch (error) {
       console.error('Failed to delete reminder:', error);
     }

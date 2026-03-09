@@ -4,7 +4,7 @@ import API from "@/services/api";
 import { useTheme } from "@/app/providers/ThemeContext";
 import { useNotification } from "@/app/providers/NotificationContext";
 import { useWorkspace } from "@/app/providers/WorkspaceContext";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import realtimeService from "@/services/realtimeService";
 import ProjectTimelineView from "../ProjectTimelineView";
 
@@ -71,7 +71,7 @@ const ProjectView = () => {
       }
     } catch (error) {
       console.error("Failed to fetch project data:", error);
-      toast.error("Failed to load project details");
+      taskToast.error("Failed to load project details");
     } finally {
       setLoading(false);
     }
@@ -178,11 +178,11 @@ const ProjectView = () => {
         toColumnId: parseInt(destination.droppableId),
         newIndex: destination.index
       });
-      toast.success('Objective repositioned');
+      taskToast.success('Objective repositioned');
     } catch (error) {
       console.error("Failed to move task:", error);
       fetchProjectData();
-      toast.error("Vector update failure");
+      taskToast.error("Vector update failure");
     }
   };
 
@@ -201,10 +201,10 @@ const ProjectView = () => {
   const updateColumn = async (columnId, columnData) => {
     try {
       await API.put(`/kanban/columns/${columnId}`, columnData);
-      toast.success('Registry updated');
+      taskToast.success('Registry updated');
       fetchProjectData();
     } catch (error) {
-      toast.error('Registry update failed');
+      taskToast.error('Registry update failed');
     }
   };
 
@@ -212,10 +212,10 @@ const ProjectView = () => {
     if (!window.confirm('Delete this registry? Operational data will be salvaged to Backlog.')) return;
     try {
       await API.delete(`/kanban/columns/${columnId}`);
-      toast.success('Registry decommissioned');
+      taskToast.success('Registry decommissioned');
       fetchProjectData();
     } catch (error) {
-      toast.error('Decommissioning failed');
+      taskToast.error('Decommissioning failed');
     }
   };
 
@@ -229,9 +229,9 @@ const ProjectView = () => {
         wipLimit: 0,
         color: '#3b82f6'
       }).then(() => {
-        toast.success('New path initialized');
+        taskToast.success('New path initialized');
         fetchProjectData();
-      }).catch(() => toast.error('Initialization failed'));
+      }).catch(() => taskToast.error('Initialization failed'));
     }
   };
 

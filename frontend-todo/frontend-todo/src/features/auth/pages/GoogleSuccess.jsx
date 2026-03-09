@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/app/providers/AuthContext";
 import { CheckCircle, Loader, XCircle } from "lucide-react";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function GoogleSuccess() {
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ function GoogleSuccess() {
     } else {
       setStatus('error');
       setError('No authentication token received');
-      toast.error('Google login failed');
+      taskToast.error('Google login failed');
       setTimeout(() => navigate('/login'), 3000);
     }
   }, [location, navigate]);
@@ -57,12 +57,12 @@ function GoogleSuccess() {
       // Login with the token
       await login(userData, "/app/dashboard");
       setStatus('success');
-      toast.success('Google login successful!');
+      taskToast.success('Google login successful!');
     } catch (err) {
       console.error("Google login finalization failed:", err);
       setStatus('error');
       setError(err.response?.data?.message || 'Failed to complete Google login');
-      toast.error('Google login failed');
+      taskToast.error('Google login failed');
       setTimeout(() => navigate('/login'), 3000);
     }
   }

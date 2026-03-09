@@ -3,7 +3,7 @@ import { useState } from "react";
 import { X, Loader } from "lucide-react";
 import API from "@/services/api";
 import { useWorkspace } from "@/app/providers/WorkspaceContext";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function CreateProject({ onClose, onProjectCreated }) {
   const [formData, setFormData] = useState({
@@ -29,12 +29,12 @@ function CreateProject({ onClose, onProjectCreated }) {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error('Project name is required');
+      taskToast.error('Project name is required');
       return;
     }
 
     if (!currentWorkspace?.id) {
-      toast.error('No workspace selected');
+      taskToast.error('No workspace selected');
       return;
     }
 
@@ -51,12 +51,12 @@ function CreateProject({ onClose, onProjectCreated }) {
         }
       );
 
-      toast.success('Project created successfully');
+      taskToast.success('Project created successfully');
       onProjectCreated?.(response.data);
       onClose();
     } catch (error) {
       console.error('Failed to create project:', error);
-      toast.error(error.response?.data?.error || 'Failed to create project');
+      taskToast.error(error.response?.data?.error || 'Failed to create project');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { timeBlockApi } from '../api/timeBlockApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useTimeBlocks = (startDate, endDate) => {
   const [blocks, setBlocks] = useState([]);
@@ -31,10 +31,10 @@ export const useTimeBlocks = (startDate, endDate) => {
     try {
       const newBlock = await timeBlockApi.createTimeBlock(blockData);
       setBlocks(prev => [...prev, newBlock]);
-      toast.success('Time block created');
+      taskToast.success('Time block created');
       return newBlock;
     } catch (err) {
-      toast.error('Failed to create time block');
+      taskToast.error('Failed to create time block');
       throw err;
     }
   };
@@ -43,10 +43,10 @@ export const useTimeBlocks = (startDate, endDate) => {
     try {
       const updated = await timeBlockApi.updateTimeBlock(id, blockData);
       setBlocks(prev => prev.map(b => b.id === id ? updated : b));
-      toast.success('Time block updated');
+      taskToast.success('Time block updated');
       return updated;
     } catch (err) {
-      toast.error('Failed to update time block');
+      taskToast.error('Failed to update time block');
       throw err;
     }
   };
@@ -55,9 +55,9 @@ export const useTimeBlocks = (startDate, endDate) => {
     try {
       await timeBlockApi.deleteTimeBlock(id);
       setBlocks(prev => prev.filter(b => b.id !== id));
-      toast.success('Time block deleted');
+      taskToast.success('Time block deleted');
     } catch (err) {
-      toast.error('Failed to delete time block');
+      taskToast.error('Failed to delete time block');
       throw err;
     }
   };
@@ -66,9 +66,9 @@ export const useTimeBlocks = (startDate, endDate) => {
     try {
       await timeBlockApi.reorderTimeBlocks(reorderedBlocks);
       setBlocks(reorderedBlocks);
-      toast.success('Blocks reordered');
+      taskToast.success('Blocks reordered');
     } catch (err) {
-      toast.error('Failed to reorder blocks');
+      taskToast.error('Failed to reorder blocks');
       throw err;
     }
   };

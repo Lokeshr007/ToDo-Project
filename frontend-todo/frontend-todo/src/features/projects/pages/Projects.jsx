@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import API from "@/services/api";
 import { Link, useNavigate } from "react-router-dom";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import { format } from 'date-fns';
 
 function Projects() {
@@ -58,7 +58,7 @@ function Projects() {
     } catch (error) {
       console.error("Failed to fetch projects:", error);
       if (error.response?.status !== 401 && error.response?.status !== 400) {
-        toast.error("Failed to load projects");
+        taskToast.error("Failed to load projects");
       }
     } finally {
       setLoading(false);
@@ -68,12 +68,12 @@ function Projects() {
   const handleCreateProject = async () => {
     // Add check for workspace
     if (!currentWorkspace || !currentWorkspace.id) {
-      toast.error('No workspace selected. Please select a workspace first.');
+      taskToast.error('No workspace selected. Please select a workspace first.');
       return;
     }
 
     if (!newProject.name.trim()) {
-      toast.error('Project name is required');
+      taskToast.error('Project name is required');
       return;
     }
 
@@ -85,16 +85,16 @@ function Projects() {
       setProjects([response.data, ...projects]);
       setShowCreateModal(false);
       setNewProject({ name: '', description: '', color: '#6366f1' });
-      toast.success('Project created successfully');
+      taskToast.success('Project created successfully');
     } catch (error) {
       console.error("Failed to create project:", error);
-      toast.error(error.response?.data?.error || 'Failed to create project');
+      taskToast.error(error.response?.data?.error || 'Failed to create project');
     }
   };
 
   const handleDeleteProject = async (projectId) => {
     if (!currentWorkspace?.id) {
-      toast.error('No workspace selected');
+      taskToast.error('No workspace selected');
       return;
     }
 
@@ -105,26 +105,26 @@ function Projects() {
     try {
       await API.delete(`/projects/${projectId}`);
       setProjects(projects.filter(p => p.id !== projectId));
-      toast.success('Project deleted successfully');
+      taskToast.success('Project deleted successfully');
     } catch (error) {
       console.error("Failed to delete project:", error);
-      toast.error(error.response?.data?.error || 'Failed to delete project');
+      taskToast.error(error.response?.data?.error || 'Failed to delete project');
     }
   };
 
   const handleDuplicateProject = async (projectId) => {
     if (!currentWorkspace?.id) {
-      toast.error('No workspace selected');
+      taskToast.error('No workspace selected');
       return;
     }
 
     try {
       const response = await API.post(`/projects/${projectId}/duplicate`);
       setProjects([response.data, ...projects]);
-      toast.success('Project duplicated successfully');
+      taskToast.success('Project duplicated successfully');
     } catch (error) {
       console.error("Failed to duplicate project:", error);
-      toast.error(error.response?.data?.error || 'Failed to duplicate project');
+      taskToast.error(error.response?.data?.error || 'Failed to duplicate project');
     }
   };
 

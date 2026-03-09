@@ -1,7 +1,7 @@
 // frontend/src/features/ai-assistant/hooks/useAIAssistant.js
 import { useState } from 'react';
 import API from '@/services/api';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const useAIAssistant = () => {
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ const useAIAssistant = () => {
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to parse study plan';
       setError(errorMessage);
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ const useAIAssistant = () => {
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to generate tasks';
       setError(errorMessage);
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -103,14 +103,14 @@ const useAIAssistant = () => {
       }
       
       if (errors.length > 0) {
-        toast.error(`${errors.length} tasks failed to save`);
+        taskToast.error(`${errors.length} tasks failed to save`);
       }
       
       return savedCount;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to save tasks';
       setError(errorMessage);
-      toast.error(errorMessage);
+      taskToast.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -133,7 +133,7 @@ const useAIAssistant = () => {
       
       return response.data.response;
     } catch (err) {
-      toast.error('Failed to get AI response');
+      taskToast.error('Failed to get AI response');
       return "I'm having trouble responding right now. Please try again.";
     } finally {
       setLoading(false);

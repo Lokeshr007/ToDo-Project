@@ -35,7 +35,7 @@ import {
   Edit2
 } from "lucide-react";
 import { format, isToday, isPast, parseISO, subDays, startOfWeek, endOfWeek, isThisWeek } from 'date-fns';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -263,7 +263,7 @@ function Dashboard() {
 
     } catch (error) {
       console.error("Dashboard fetch error:", error);
-      toast.error("Failed to load dashboard data");
+      taskToast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -333,13 +333,13 @@ function Dashboard() {
         prev.map(todo => todo.id === todoId ? { ...todo, status: response.data.status } : todo)
       );
       
-      toast.success(`Task marked as ${response.data.status}`);
+      taskToast.success(`Task marked as ${response.data.status}`);
       
       // Refresh dashboard data
       fetchDashboardData();
     } catch (error) {
       console.error("Failed to update task:", error);
-      toast.error("Failed to update task");
+      taskToast.error("Failed to update task");
     }
   };
 

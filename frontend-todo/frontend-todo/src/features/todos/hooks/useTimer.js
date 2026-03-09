@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '@/services/api';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 export const useTimer = () => {
   const [activeTimer, setActiveTimer] = useState(null);
@@ -49,11 +49,11 @@ export const useTimer = () => {
     try {
       const response = await API.post(`/todos/${todoId}/time/start`);
       setActiveTimer(response.data);
-      toast.success('Timer started');
+      taskToast.success('Timer started');
       return response.data;
     } catch (error) {
       console.error('Failed to start timer:', error);
-      toast.error(error.response?.data?.error || 'Failed to start timer');
+      taskToast.error(error.response?.data?.error || 'Failed to start timer');
       throw error;
     } finally {
       setLoading(false);
@@ -63,7 +63,7 @@ export const useTimer = () => {
   const stopTimer = useCallback(async (onSuccess) => {
     if (!activeTimer || !activeTimer.id) {
       console.error("No active timer or timer ID is missing");
-      toast.error("No active timer found");
+      taskToast.error("No active timer found");
       return;
     }
     
@@ -73,7 +73,7 @@ export const useTimer = () => {
       const response = await API.post(`/todos/time/${activeTimer.id}/stop`);
       setActiveTimer(null);
       setElapsedTime(0);
-      toast.success('Timer stopped');
+      taskToast.success('Timer stopped');
       
       if (onSuccess) {
         onSuccess(response.data);
@@ -83,7 +83,7 @@ export const useTimer = () => {
     } catch (error) {
       console.error('Failed to stop timer:', error);
       console.error('Error response:', error.response?.data); // Debug log
-      toast.error(error.response?.data?.error || 'Failed to stop timer');
+      taskToast.error(error.response?.data?.error || 'Failed to stop timer');
       throw error;
     } finally {
       setLoading(false);

@@ -158,7 +158,7 @@ const Settings = () => {
   };
 
   const handleFeatureClick = (feature) => {
-    taskToast.info(`${feature} Logic Imminent`, { 
+    tasktaskToast.info(`${feature} Logic Imminent`, { 
       description: "Neural pathways for this feature are currently initializing. Deployment expected in upcoming cycles."
     });
   };
@@ -168,9 +168,9 @@ const Settings = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       setSavedSettings({ ...settings });
-      taskToast.success('Configuration Commited');
+      tasktaskToast.success('Configuration Commited');
     } catch (error) {
-       taskToast.error('Transaction Aborted');
+       tasktaskToast.error('Transaction Aborted');
     } finally {
       setLoading(false);
     }
@@ -193,7 +193,7 @@ const Settings = () => {
          togglePreviewMode={() => setPreviewMode(!previewMode)}
          hasChanges={hasChanges}
          saveSettings={saveSettings}
-         resetSettings={() => { setSettings({ ...savedSettings }); taskToast.info('State Reverted'); }}
+         resetSettings={() => { setSettings({ ...savedSettings }); tasktaskToast.info('State Reverted'); }}
          loading={loading}
       />
 

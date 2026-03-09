@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import API from '@/services/api';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import { formatTodoData, processTodoResponse } from '../utils/todoHelpers';
 
 export const useTodoActions = (setTodos) => {
@@ -94,12 +94,28 @@ export const useTodoActions = (setTodos) => {
     }
   };
 
+  const bulkDelete = async (ids, permanent = false) => {
+    try {
+      setLoading(true);
+      await API.post("/todos/bulk/delete", { ids, permanent });
+      setTodos(prev => prev.filter(todo => !ids.includes(todo.id)));
+      toast.success(`Deleted ${ids.length} tasks`);
+    } catch (error) {
+      console.error("Bulk delete failed:", error);
+      toast.error("Failed to delete multiple tasks");
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     fetchTodos,
     createTodo,
     updateTodo,
     deleteTodo,
-    toggleTodoStatus
+    toggleTodoStatus,
+    bulkDelete
   };
 };

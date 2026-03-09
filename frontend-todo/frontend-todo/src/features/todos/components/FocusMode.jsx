@@ -5,7 +5,7 @@ import {
   ListTodo, CheckCircle, X 
 } from 'lucide-react';
 import { todoApi } from '@/services/api/todoApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const FocusMode = () => {
   const [isActive, setIsActive] = useState(false);
@@ -75,7 +75,7 @@ const FocusMode = () => {
       const newCount = sessionsCompleted + 1;
       setSessionsCompleted(newCount);
       
-      toast.custom((t) => (
+      taskToast.custom((t) => (
         <div className="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-green-500/30">
           <div className="flex items-center gap-3">
             <CheckCircle className="text-green-400" size={20} />
@@ -104,7 +104,7 @@ const FocusMode = () => {
       setSessionType('pomodoro');
       setTime(focusDurations.pomodoro);
       
-      toast.success('Break time over! Ready to focus?');
+      taskToast.success('Break time over! Ready to focus?');
     }
   };
 
@@ -147,7 +147,7 @@ const FocusMode = () => {
       setIsActive(true);
     }
     
-    toast.success(`Focusing on: ${task.title}`);
+    taskToast.success(`Focusing on: ${task.title}`);
   };
 
   return (

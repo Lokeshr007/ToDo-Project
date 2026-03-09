@@ -22,27 +22,27 @@ const RealtimeEvents = () => {
 
         switch (update.type) {
             case 'TASK_CREATED':
-                taskToast.success(`New task: ${update.data.item}`);
+                tasktaskToast.success(`New task: ${update.data.item}`);
                 break;
             case 'TASK_UPDATED':
                 if (update.data.item) {
-                    taskToast.info(`Task updated: ${update.data.item}`);
+                    tasktaskToast.info(`Task updated: ${update.data.item}`);
                 }
                 break;
             case 'TASK_DELETED':
-                taskToast.warning('Task removed');
+                tasktaskToast.warning('Task removed');
                 break;
             case 'PROJECT_GENERATED':
-                taskToast.success(`AI Project Created: ${update.data.projectName}`, {
+                tasktaskToast.success(`AI Project Created: ${update.data.projectName}`, {
                     duration: 5000,
                     icon: 'rocket'
                 });
                 break;
             case 'MEMBER_JOINED':
-                taskToast.info(`${update.data.name} joined the workspace`);
+                tasktaskToast.info(`${update.data.name} joined the workspace`);
                 break;
             case 'BULK_TASK_UPDATED':
-                taskToast.success(`Bulk updated ${update.data.type} for tasks`);
+                tasktaskToast.success(`Bulk updated ${update.data.type} for tasks`);
                 break;
             default:
                 break;
@@ -60,7 +60,7 @@ const RealtimeEvents = () => {
             if (!isMounted) return;
 
             realtimeService.subscribe(userTopic, (notification) => {
-                taskToast.info(notification.message);
+                tasktaskToast.info(notification.message);
             });
 
             if (workspaceTopic) {

@@ -8,15 +8,17 @@ import {
 import { format } from 'date-fns';
 import CommentsList from '../TodoComments/CommentsList';
 import CommentInput from '../TodoComments/CommentInput';
-import { formatDueDate } from '../../utils/dateHelpers';
-import toast from 'react-hot-toast';
+import { formatDueDate, formatTime } from '../../utils/dateHelpers';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
-const TodoListItem = ({ 
-  todo, expanded, onToggleExpand, onStatusChange, onEdit, onDelete,
-  onStartTimer, onStopTimer, activeTimer, comments, loadingComments,
-  commentText, onCommentTextChange, onAddComment,
-  getPriorityColor, getStatusColor 
-}) => {
+const TodoListItem = (props) => {
+  const { 
+    todo, expanded, onToggleExpand, onStatusChange, onEdit, onDelete,
+    onStartTimer, onStopTimer, activeTimer, elapsedTime = 0, comments, loadingComments,
+    commentText, onCommentTextChange, onAddComment,
+    getPriorityColor, getStatusColor,
+    selected, onSelect
+  } = props;
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -34,19 +36,19 @@ const TodoListItem = ({
     e.stopPropagation();
     
     // Show custom toast confirmation
-    toast.custom((t) => (
+    taskToast.custom((t) => (
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-xl z-50">
         <p className="text-white mb-3">Delete task "{todo.title || todo.item}"?</p>
         <div className="flex gap-2 justify-end">
           <button
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => taskToast.dismiss(t.id)}
             className="px-3 py-1 text-sm text-gray-400 hover:bg-gray-700 rounded transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={async () => {
-              toast.dismiss(t.id);
+              taskToast.dismiss(t.id);
               setIsDeleting(true);
               try {
                 await onDelete(todo.id);
@@ -76,6 +78,17 @@ const TodoListItem = ({
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <div className="flex items-start gap-3 flex-1">
+            {/* Selection Checkbox */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={selected || false}
+                onChange={onSelect}
+                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
             <button
               onClick={handleStatusChange}
               disabled={isUpdating}
@@ -166,22 +179,29 @@ const TodoListItem = ({
           <div className="flex items-center gap-2">
             {/* Timer Button */}
             {todo.status !== 'COMPLETED' && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  isActiveTimer ? onStopTimer() : onStartTimer(todo.id);
-                }}
-                className={`p-2 rounded-lg transition-colors focus:outline-none ${
-                  isActiveTimer 
-                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
-                    : 'hover:bg-gray-700 text-gray-400'
-                }`}
-                title={isActiveTimer ? "Stop Timer" : "Start Timer"}
-                type="button"
-              >
-                {isActiveTimer ? <StopCircle size={16} /> : <Play size={16} />}
-              </button>
+              <div className="flex items-center gap-2">
+                {isActiveTimer && (
+                  <span className="text-xs font-mono text-red-400 animate-pulse">
+                    {formatTime(elapsedTime)}
+                  </span>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isActiveTimer ? onStopTimer() : onStartTimer(todo.id);
+                  }}
+                  className={`p-2 rounded-lg transition-colors focus:outline-none ${
+                    isActiveTimer 
+                      ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+                      : 'hover:bg-gray-700 text-gray-400'
+                  }`}
+                  title={isActiveTimer ? "Stop Timer" : "Start Timer"}
+                  type="button"
+                >
+                  {isActiveTimer ? <StopCircle size={16} /> : <Play size={16} />}
+                </button>
+              </div>
             )}
 
             {/* Expand/Collapse Button */}

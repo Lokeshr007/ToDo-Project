@@ -27,7 +27,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import { format, addDays } from 'date-fns';
 
 import API from "@/services/api";
@@ -68,12 +68,12 @@ function AiAssistant() {
       setParsedPlan(plan);
       setCurrentStep(2);
       
-      toast.success('Study plan parsed successfully!', {
+      taskToast.success('Study plan parsed successfully!', {
         icon: '📚',
         duration: 3000
       });
     } catch (err) {
-      toast.error('Failed to parse study plan. Please try again.');
+      taskToast.error('Failed to parse study plan. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -93,12 +93,12 @@ function AiAssistant() {
       
       setCurrentStep(3);
       
-      toast.success(`Generated ${tasks.length} tasks for your 60-day plan!`, {
+      taskToast.success(`Generated ${tasks.length} tasks for your 60-day plan!`, {
         icon: '✨',
         duration: 3000
       });
     } catch (err) {
-      toast.error('Failed to generate tasks. Please try again.');
+      taskToast.error('Failed to generate tasks. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -130,7 +130,7 @@ function AiAssistant() {
   // Save selected tasks to Todo system
   const handleSaveTasks = async () => {
     if (selectedTasks.size === 0) {
-      toast.error('Please select at least one task to save');
+      taskToast.error('Please select at least one task to save');
       return;
     }
 
@@ -143,7 +143,7 @@ function AiAssistant() {
       
       const savedCount = await saveTasks(tasksToSave, currentWorkspace?.id);
       
-      toast.success(
+      taskToast.success(
         <div>
           <p className="font-medium">Success! 🎉</p>
           <p className="text-sm">{savedCount} tasks added to your Todo list</p>
@@ -159,7 +159,7 @@ function AiAssistant() {
       }, 3000);
       
     } catch (err) {
-      toast.error('Failed to save tasks. Please try again.');
+      taskToast.error('Failed to save tasks. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -176,9 +176,9 @@ function AiAssistant() {
       const taskIds = new Set(tasks.map(t => t.id || `temp-${Math.random()}`));
       setSelectedTasks(taskIds);
       
-      toast.success('Tasks regenerated successfully!');
+      taskToast.success('Tasks regenerated successfully!');
     } catch (err) {
-      toast.error('Failed to regenerate tasks.');
+      taskToast.error('Failed to regenerate tasks.');
     } finally {
       setProcessing(false);
     }

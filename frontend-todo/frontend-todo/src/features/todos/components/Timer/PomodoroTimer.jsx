@@ -54,11 +54,11 @@ const PomodoroTimer = ({ onComplete }) => {
     sound.play().catch(e => console.log("Audio play failed"));
 
     if (mode === 'focus') {
-      taskToast.success("Focus session complete! Time for a break.");
+      tasktaskToast.success("Focus session complete! Time for a break.");
       if (onComplete) onComplete();
       switchMode('break');
     } else {
-      taskToast.success("Break over! Ready to focus?");
+      tasktaskToast.success("Break over! Ready to focus?");
       switchMode('focus');
     }
   };

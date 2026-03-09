@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import FileUploadZone from "@/features/ai-assistant/components/FileUploadZone";
 import TaskGenerationPreview from "@/features/ai-assistant/components/TaskGenerationPreview";
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 import API from "@/services/api";
 
 function TaskIQHeader({ workspaceId, onTasksCreated }) {
@@ -53,7 +53,7 @@ function TaskIQHeader({ workspaceId, onTasksCreated }) {
         setSelectedTaskIds(new Set(payload.tasks.map((_, i) => `temp-${i}`)));
         setStep('preview');
       } else {
-         toast.error("Failed to extract tasks. Ensure the document contains an actionable curriculum.");
+         taskToast.error("Failed to extract tasks. Ensure the document contains an actionable curriculum.");
       }
     } catch (error) {
       console.error("Failed to analyze file:", error);
@@ -61,7 +61,7 @@ function TaskIQHeader({ workspaceId, onTasksCreated }) {
       if (error.response?.data?.message) {
          errMsg = error.response.data.message;
       }
-      toast.error(errMsg);
+      taskToast.error(errMsg);
     } finally {
       setProcessing(false);
     }
@@ -82,14 +82,14 @@ function TaskIQHeader({ workspaceId, onTasksCreated }) {
         });
       }
       
-      toast.success(`Successfully created ${tasksToCreate.length} tasks!`);
+      taskToast.success(`Successfully created ${tasksToCreate.length} tasks!`);
       setShowAI(false);
       setStep('upload');
       setUploadedFile(null);
       if (onTasksCreated) onTasksCreated();
     } catch (error) {
       console.error("Failed to create tasks:", error);
-      toast.error("Failed to create some tasks");
+      taskToast.error("Failed to create some tasks");
     } finally {
       setProcessing(false);
     }

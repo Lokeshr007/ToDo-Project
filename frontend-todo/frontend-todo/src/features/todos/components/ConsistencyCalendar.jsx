@@ -3,7 +3,7 @@ import { Calendar, ChevronLeft, ChevronRight, TrendingUp, Award, Clock } from 'l
 import { format, subMonths, addMonths, eachDayOfInterval, startOfMonth, endOfMonth, isSameDay, isToday } from 'date-fns';
 import { todoApi } from '@/services/api/todoApi';
 import { goalApi } from '../api/goalApi';
-import toast from 'react-hot-toast';
+import { taskToast } from '@/shared/components/QuantumToaster';
 
 const ConsistencyCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -104,7 +104,7 @@ const ConsistencyCalendar = () => {
 
     } catch (error) {
       console.error('Failed to fetch activity data:', error);
-      toast.error('Failed to load consistency data');
+      taskToast.error('Failed to load consistency data');
     } finally {
       setLoading(false);
     }
